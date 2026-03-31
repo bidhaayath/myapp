@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * FIRESTORE SECURITY RULES DOCUMENTATION
+     * 
+     * Core Philosophy:
+     * This ruleset implements a strict user-ownership model. Access to data is restricted
+     * based on the authenticated user's identity (UID). The system is designed for a
+     * private journaling experience where users have exclusive access to their own data.
+     * 
+     * Data Structure:
+     * The database follows a hierarchical structure where all user-specific data is nested
+     * under a top-level '/users/{userId}' path. Journal entries are stored in a 
+     * subcollection: /users/{userId}/dailyEntries/{entryDateId}.
+     * 
+     * Key Security Decisions:
+     * 1. Path-Based Authorization: We rely on the {userId} wildcard in the document path 
+     *    to identify the owner of the data tree.
+     * 2. Denormalized Ownership: Every DailyEntry document contains a 'userId' field. 
+     *    Rules enforce that this field matches the authenticated user's UID to ensure
+     *    relational integrity and provide a secondary layer of authorization.
+     * 3. Predictable IDs: The system uses the date (YYYY-MM-DD) as the document ID for 
+     *    daily entries, which naturally prevents duplicate entries for the same day.
+     * 4. Prototyping Flexibility: While authorization is strictly enforced, the rules
+     *    do not validate specific data types or the presence of all schema fields, 
+     *    allowing for rapid frontend iteration.
+     */
+
+    // --- Global Helper Functions ---
+
+    /**
+     * @description Checks if the request is made by an authenticated user.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Combines ownership check with a check that the resource actually exists.
+     * Used for update and delete operations to ensure state-changing requests are valid.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the root User document.
+     * @path /users/{userId}
+     * @allow (create) if auth.uid matches userId.
+     * @deny (read) if auth.uid does not match userId.
+     * @principle Pattern 4: Self-Creation and Pattern 1: Ownership.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Rules for private daily journal entries.
+       * @path /users/{userId}/dailyEntries/{entryDateId}
+       * @allow (list) if auth.uid matches {userId} wildcard.
+       * @deny (create) if the internal 'userId' field does not match the authenticated user.
+       * @principle Pattern 1: Ownership and P5: Relational Integrity.
+       */
+      match /dailyEntries/{entryDateId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        
+        allow create: if isOwner(userId) 
+          && request.resource.data.userId == request.auth.uid;
+        
+        allow update: if isExistingOwner(userId) 
+          && request.resource.data.userId == resource.data.userId;
+        
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+
+    // Explicitly deny access to any other paths by default.
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

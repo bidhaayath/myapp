@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "DailyEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DailyEntry",
+      "type": "object",
+      "description": "Represents a single day's journal entry for a user, containing all content across the four dedicated pages.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DailyEntry entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns this daily entry, sourced from an external authentication system. (Relationship: User 1:N DailyEntry)"
+        },
+        "entryDate": {
+          "type": "string",
+          "description": "The specific calendar date for which this journal entry was created. (YYYY-MM-DD)",
+          "format": "date"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when this daily entry was first created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when this daily entry was last updated.",
+          "format": "date-time"
+        },
+        "isDuaChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Dua' was checked on the daily checklist for this entry."
+        },
+        "isPlankChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Plank' was checked on the daily checklist for this entry."
+        },
+        "isFacialExerciseChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Facial exercise' was checked on the daily checklist for this entry."
+        },
+        "isBreathingExerciseChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Breathing exercise' was checked on the daily checklist for this entry."
+        },
+        "isSuratMulkChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Surat Mulk' was checked on the daily checklist for this entry."
+        },
+        "isDhamuNamaadhChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Dhamu namaadh' was checked on the daily checklist for this entry."
+        },
+        "isCombHairChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Comb hair' was checked on the daily checklist for this entry."
+        },
+        "isVacuumRoomChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Vacuum room' was checked on the daily checklist for this entry."
+        },
+        "isWashBathroomChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Wash bathroom' was checked on the daily checklist for this entry."
+        },
+        "isFathisSunnatChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Fathis sunnat' was checked on the daily checklist for this entry."
+        },
+        "isMoringaTabletChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Moringa tablet' was checked on the daily checklist for this entry."
+        },
+        "isFishOilTabletChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Fish oil tablet' was checked on the daily checklist for this entry."
+        },
+        "isRosemarySprayChecked": {
+          "type": "boolean",
+          "description": "Indicates if 'Rosemary spray' was checked on the daily checklist for this entry."
+        },
+        "gratefulFor": {
+          "type": "string",
+          "description": "Text content for the 'What I am grateful for' section of the positive reflection page."
+        },
+        "whatILearned": {
+          "type": "string",
+          "description": "Text content for the 'What I learned today' section of the positive reflection page."
+        },
+        "whatDrainedMe": {
+          "type": "string",
+          "description": "Text content for the 'What drained me of energy' section of the growth reflection page."
+        },
+        "whatToImprove": {
+          "type": "string",
+          "description": "Text content for the 'What to improve' section of the growth reflection page."
+        },
+        "mood": {
+          "type": "string",
+          "description": "The user's selected mood for the day, chosen via emoji or simple mood buttons (e.g., 'Happy', 'Calm', 'Tired')."
+        },
+        "freeWriting": {
+          "type": "string",
+          "description": "Text content for the open-ended free writing journal area on the mood and free writing page."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "entryDate",
+        "createdAt",
+        "updatedAt",
+        "isDuaChecked",
+        "isPlankChecked",
+        "isFacialExerciseChecked",
+        "isBreathingExerciseChecked",
+        "isSuratMulkChecked",
+        "isDhamuNamaadhChecked",
+        "isCombHairChecked",
+        "isVacuumRoomChecked",
+        "isWashBathroomChecked",
+        "isFathisSunnatChecked",
+        "isMoringaTabletChecked",
+        "isFishOilTabletChecked",
+        "isRosemarySprayChecked",
+        "gratefulFor",
+        "whatILearned",
+        "whatDrainedMe",
+        "whatToImprove",
+        "mood",
+        "freeWriting"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/dailyEntries/{entryDateId}",
+        "definition": {
+          "entityName": "DailyEntry",
+          "schema": {
+            "$ref": "#/backend/entities/DailyEntry"
+          },
+          "description": "This subcollection stores private `DailyEntry` documents. Each document represents a user's journal for a specific day and is owned by the user identified by `userId`. The `userId` field is denormalized within each document for authorization independence. The document ID (`entryDateId`) is the date in 'YYYY-MM-DD' format, corresponding to the `entryDate` field.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the authenticated user who owns this daily entry."
+            },
+            {
+              "name": "entryDateId",
+              "description": "The specific calendar date for which this daily journal entry was created, in 'YYYY-MM-DD' format. This serves as the document ID."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure for the 'Daily Four' app utilizes a strict hierarchical, path-based ownership model to ensure security, scalability, and debuggability. All `DailyEntry` documents, representing a user's daily journal, will be stored within a subcollection specific to the authenticated user. The primary path will be `/users/{userId}/dailyEntries/{entryDateId}`.\n\n**Authorization Independence (Strategy A):** To achieve critical authorization independence, the `DailyEntry` schema explicitly includes a `userId` field. This denormalizes the ownership context directly into each `DailyEntry` document. Even though the document is already nested under `/users/{userId}`, having `resource.data.userId` allows for robust security rules that can verify `request.auth.uid == resource.data.userId` without relying on `get()` calls to parent documents. This design enables atomic creation and updates and drastically simplifies security rule logic, making it easy to debug.\n\n**QAPs (Query, Add, Update, Delete Security):**\n*   **Query (List):** Users can only query their own daily entries by directly accessing the `/users/{request.auth.uid}/dailyEntries` path. Firestore security rules can enforce `allow list: if request.auth.uid == userId;` where `userId` is the wildcard in the path. This ensures that users can only retrieve their own journal entries, preventing unauthorized data exposure and adhering to the QAP principle that rules are not filters.\n*   **Add/Update/Delete:** For individual `DailyEntry` documents, rules can simply be `allow read, write: if request.auth.uid == userId;`. The `userId` field within the document acts as an additional, consistent ownership check, reinforcing security.\n\n**Structural Segregation (Strategy B):** All documents within `/users/{userId}/dailyEntries` are exclusively `DailyEntry` entities. They are all owned by the respective `userId` and share the identical security posture: private to that user. This homogeneous security requirement simplifies rules and prevents mixing data with different access needs in the same collection.\n\n**Access Modeling (Strategy C):** This design directly implements the 'Private Data' and 'Hierarchical Paths for User-Owned Data' patterns. The `userId` field in the `DailyEntry` document, coupled with the `{userId}` wildcard in the path, provides consistent and clear ownership identification.\n\n**Data Clarity and Predictability (Strategy D):** The `DailyEntry` schema is comprehensive, covering all necessary checklist items, reflection fields, and mood tracking. The `entryDate` (formatted as YYYY-MM-DD) will serve as the `entryDateId` (document ID) for each `DailyEntry`. This ensures a predictable, human-readable document ID, simplifies date-based lookups, and guarantees that only one entry exists per day per user, aligning with the app's core concept."
+  }
+}

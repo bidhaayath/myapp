@@ -1,13 +1,16 @@
 "use client"
 
-import React from 'react';
+import React, { useState } from 'react';
 import { PageHeader } from './page-header';
 import { ReflectionInput } from './reflection-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { JournalEntry, MOODS } from '@/lib/types';
+import { JournalEntry, MOODS, ChecklistItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Plus, Trash2 } from 'lucide-react';
 
 interface PageProps {
   entry: JournalEntry;
@@ -15,24 +18,51 @@ interface PageProps {
 }
 
 export function PageChecklist({ entry, onUpdate }: PageProps) {
-  const completedCount = entry.checklist.filter(i => i.checked).length;
-  const totalCount = entry.checklist.length;
+  const [newItemText, setNewItemText] = useState('');
+  
+  const allItems = [...entry.checklist, ...entry.customChecklist];
+  const completedCount = allItems.filter(i => i.checked).length;
+  const totalCount = allItems.length;
 
-  const toggleItem = (id: string) => {
-    const newChecklist = entry.checklist.map(item => 
-      item.id === id ? { ...item, checked: !item.checked } : item
-    );
-    onUpdate({ checklist: newChecklist });
+  const toggleItem = (id: string, isCustom: boolean) => {
+    if (isCustom) {
+      const newList = entry.customChecklist.map(item => 
+        item.id === id ? { ...item, checked: !item.checked } : item
+      );
+      onUpdate({ customChecklist: newList });
+    } else {
+      const newList = entry.checklist.map(item => 
+        item.id === id ? { ...item, checked: !item.checked } : item
+      );
+      onUpdate({ checklist: newList });
+    }
+  };
+
+  const addCustomItem = () => {
+    if (!newItemText.trim()) return;
+    const newItem: ChecklistItem = {
+      id: `custom-${Date.now()}`,
+      label: newItemText,
+      checked: false
+    };
+    onUpdate({ customChecklist: [...entry.customChecklist, newItem] });
+    setNewItemText('');
+  };
+
+  const removeCustomItem = (id: string) => {
+    onUpdate({ customChecklist: entry.customChecklist.filter(i => i.id !== id) });
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 pb-12 pt-8">
+    <div className="flex flex-col h-full overflow-y-auto px-4 pb-32 pt-8">
       <PageHeader 
         date={entry.date} 
         title="Daily Checklist" 
         progress={{ current: completedCount, total: totalCount }}
       />
-      <div className="space-y-1">
+      
+      <div className="space-y-3 mb-8">
+        <h3 className="text-sm font-headline uppercase tracking-widest text-muted-foreground ml-2">Routine</h3>
         {entry.checklist.map((item) => (
           <div 
             key={item.id} 
@@ -40,25 +70,55 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
               "flex items-center space-x-4 p-4 rounded-2xl transition-all duration-200",
               item.checked ? "bg-primary/10 opacity-60" : "bg-white border border-stone-100/50"
             )}
-            onClick={() => toggleItem(item.id)}
+            onClick={() => toggleItem(item.id, false)}
           >
-            <Checkbox 
-              id={item.id} 
-              checked={item.checked} 
-              onCheckedChange={() => toggleItem(item.id)} 
-              className="w-6 h-6 rounded-lg border-[#E6D8CE]"
-            />
-            <Label 
-              htmlFor={item.id} 
-              className={cn(
-                "flex-1 text-lg font-body cursor-pointer select-none",
-                item.checked && "line-through text-muted-foreground"
-              )}
-            >
+            <Checkbox checked={item.checked} className="w-6 h-6 rounded-lg border-[#E6D8CE]" />
+            <Label className={cn("flex-1 text-lg font-body", item.checked && "line-through")}>
               {item.label}
             </Label>
           </div>
         ))}
+      </div>
+
+      <div className="space-y-3 mb-8">
+        <h3 className="text-sm font-headline uppercase tracking-widest text-muted-foreground ml-2">Extra Today</h3>
+        {entry.customChecklist.map((item) => (
+          <div 
+            key={item.id} 
+            className={cn(
+              "flex items-center space-x-4 p-4 rounded-2xl transition-all duration-200",
+              item.checked ? "bg-primary/10 opacity-60" : "bg-white border border-stone-100/50"
+            )}
+          >
+            <Checkbox 
+              checked={item.checked} 
+              onCheckedChange={() => toggleItem(item.id, true)}
+              className="w-6 h-6 rounded-lg border-[#E6D8CE]" 
+            />
+            <Label 
+              onClick={() => toggleItem(item.id, true)}
+              className={cn("flex-1 text-lg font-body", item.checked && "line-through")}
+            >
+              {item.label}
+            </Label>
+            <Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)}>
+              <Trash2 className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          </div>
+        ))}
+        
+        <div className="flex gap-2 p-2">
+          <Input 
+            value={newItemText}
+            onChange={(e) => setNewItemText(e.target.value)}
+            placeholder="Add something else..."
+            className="rounded-xl bg-white border-stone-100"
+            onKeyDown={(e) => e.key === 'Enter' && addCustomItem()}
+          />
+          <Button onClick={addCustomItem} size="icon" className="rounded-xl bg-secondary text-secondary-foreground shrink-0">
+            <Plus className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -66,12 +126,8 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
 
 export function PageReflectionPositive({ entry, onUpdate }: PageProps) {
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 pb-12 pt-8">
-      <PageHeader 
-        date={entry.date} 
-        title="Reflection" 
-        subtitle="Finding light in the day"
-      />
+    <div className="flex flex-col h-full overflow-y-auto px-4 pb-32 pt-8">
+      <PageHeader date={entry.date} title="Reflection" subtitle="Finding light in the day" />
       <ReflectionInput
         title="What I am grateful for"
         sectionType="Positive"
@@ -90,12 +146,8 @@ export function PageReflectionPositive({ entry, onUpdate }: PageProps) {
 
 export function PageReflectionGrowth({ entry, onUpdate }: PageProps) {
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 pb-12 pt-8">
-      <PageHeader 
-        date={entry.date} 
-        title="Growth" 
-        subtitle="Nurturing your journey"
-      />
+    <div className="flex flex-col h-full overflow-y-auto px-4 pb-32 pt-8">
+      <PageHeader date={entry.date} title="Growth" subtitle="Nurturing your journey" />
       <ReflectionInput
         title="What drained me of energy"
         sectionType="Growth"
@@ -114,16 +166,12 @@ export function PageReflectionGrowth({ entry, onUpdate }: PageProps) {
 
 export function PageFreeWriting({ entry, onUpdate }: PageProps) {
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 pb-12 pt-8">
-      <PageHeader 
-        date={entry.date} 
-        title="Unwind" 
-        subtitle="The heart speaks freely"
-      />
+    <div className="flex flex-col h-full overflow-y-auto px-4 pb-32 pt-8">
+      <PageHeader date={entry.date} title="Unwind" subtitle="The heart speaks freely" />
       
       <div className="mb-8">
         <h3 className="text-xl font-headline text-[#4A3F35] mb-4">Mood of the day</h3>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-2">
           {MOODS.map((mood) => (
             <button
               key={mood.label}
@@ -135,8 +183,8 @@ export function PageFreeWriting({ entry, onUpdate }: PageProps) {
                   : "bg-white border-transparent hover:bg-stone-50"
               )}
             >
-              <span className="text-2xl mb-1">{mood.emoji}</span>
-              <span className="text-xs font-medium text-secondary-foreground">{mood.label}</span>
+              <span className="text-xl mb-1">{mood.emoji}</span>
+              <span className="text-[10px] font-medium leading-tight text-center">{mood.label}</span>
             </button>
           ))}
         </div>
@@ -148,7 +196,7 @@ export function PageFreeWriting({ entry, onUpdate }: PageProps) {
           value={entry.freeWriting}
           onChange={(e) => onUpdate({ freeWriting: e.target.value })}
           placeholder="Let your thoughts flow like a gentle stream..."
-          className="flex-1 min-h-[300px] resize-none bg-stone-50/50 border-none focus-visible:ring-1 focus-visible:ring-primary rounded-2xl text-lg leading-relaxed shadow-inner"
+          className="flex-1 min-h-[300px] resize-none bg-stone-50/50 border-none focus-visible:ring-1 focus-visible:ring-primary rounded-2xl text-lg leading-relaxed shadow-inner p-6"
         />
       </div>
     </div>

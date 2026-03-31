@@ -1,115 +1,155 @@
 "use client"
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { JournalContainer } from '@/components/journal/journal-container';
 import { Button } from '@/components/ui/button';
-import { Calendar, ChevronRight, Moon, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { MOODS } from '@/lib/types';
 import Link from 'next/link';
 
-function JournalContent() {
-  const searchParams = useSearchParams();
+function Dashboard() {
   const router = useRouter();
-  const { getEntry, updateEntry, isLoaded, getStreak } = useJournalStore();
-  const [viewingJournal, setViewingJournal] = useState(false);
+  const searchParams = useSearchParams();
+  const { entries, isLoaded, getStreak, getEntry, updateEntry } = useJournalStore();
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  // Use the date from URL or today
   const dateFromUrl = searchParams.get('date');
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const activeDate = dateFromUrl || today;
+  const activeDate = dateFromUrl || format(new Date(), 'yyyy-MM-dd');
+  const isJournalOpen = !!dateFromUrl;
 
-  useEffect(() => {
-    if (dateFromUrl) {
-      setViewingJournal(true);
-    }
-  }, [dateFromUrl]);
+  if (!isLoaded) return null;
 
-  if (!isLoaded) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FCFAFA]">
-      <div className="animate-pulse text-primary font-headline text-2xl italic">Daily Four...</div>
-    </div>
-  );
+  const handleDateSelect = (date: Date) => {
+    router.push(`/?date=${format(date, 'yyyy-MM-dd')}`);
+  };
 
-  const entry = getEntry(activeDate);
+  const days = eachDayOfInterval({
+    start: startOfMonth(currentMonth),
+    end: endOfMonth(currentMonth),
+  });
 
-  if (viewingJournal) {
+  const streak = getStreak();
+
+  if (isJournalOpen) {
     return (
       <JournalContainer 
-        entry={entry} 
+        entry={getEntry(activeDate)} 
         onUpdate={(updates) => updateEntry(activeDate, updates)}
-        onGoBack={() => {
-          setViewingJournal(false);
-          router.push('/');
-        }}
+        onGoBack={() => router.push('/')}
       />
     );
   }
 
-  const streak = getStreak();
-
   return (
-    <div className="min-h-screen bg-[#FCFAFA] flex flex-col p-6 overflow-hidden relative">
-      {/* Decorative Elements */}
-      <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-secondary/20 rounded-full blur-3xl pointer-events-none" />
-
-      <header className="pt-12 mb-12 relative">
-        <h1 className="text-5xl font-headline text-[#4A3F35] leading-tight">
-          Daily Four
-        </h1>
-        <p className="text-xl text-muted-foreground font-body italic mt-2">
-          Your moment of peace.
-        </p>
+    <div className="min-h-screen bg-[#FCFAFA] flex flex-col pb-24">
+      {/* Header */}
+      <header className="px-6 pt-12 pb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-4xl font-headline text-[#4A3F35]">Daily Four</h1>
+          <p className="text-muted-foreground font-body italic">Mindful journey</p>
+        </div>
+        <div className="bg-white/80 p-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-secondary-foreground" />
+          <span className="font-headline text-lg">{streak} Day Streak</span>
+        </div>
       </header>
 
-      <div className="flex-1 flex flex-col gap-6 relative">
-        {/* Streak Tracker */}
-        <div className="bg-white/60 backdrop-blur-sm border border-stone-200/50 p-6 rounded-[2rem] shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground font-headline mb-1">Your Journey</p>
-            <p className="text-2xl font-headline text-[#4A3F35]">{streak} Day Streak</p>
+      {/* Calendar Section */}
+      <section className="px-4 mb-8">
+        <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-stone-100/50">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-headline text-[#4A3F35]">
+              {format(currentMonth, 'MMMM yyyy')}
+            </h2>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                <ChevronRight className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
-          <div className="bg-secondary/40 p-3 rounded-full">
-            <Sparkles className="w-6 h-6 text-secondary-foreground" />
+
+          <div className="grid grid-cols-7 gap-2">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+              <div key={d} className="text-center text-[10px] font-headline text-muted-foreground/60 uppercase tracking-widest py-2">
+                {d}
+              </div>
+            ))}
+            {days.map((day, i) => {
+              const dateStr = format(day, 'yyyy-MM-dd');
+              const entry = entries[dateStr];
+              const mood = MOODS.find(m => m.label === entry?.mood);
+              const isToday = isSameDay(day, new Date());
+
+              return (
+                <button
+                  key={dateStr}
+                  onClick={() => handleDateSelect(day)}
+                  className={cn(
+                    "aspect-square rounded-2xl flex flex-col items-center justify-center relative transition-all",
+                    isToday ? "bg-primary/20 ring-1 ring-primary" : "hover:bg-stone-50",
+                    mood ? "bg-opacity-40" : ""
+                  )}
+                  style={mood ? { backgroundColor: `${mood.color}44` } : {}}
+                >
+                  <span className={cn(
+                    "text-sm font-headline mb-0.5",
+                    isToday ? "text-[#4A3F35]" : "text-stone-500"
+                  )}>
+                    {format(day, 'd')}
+                  </span>
+                  {mood && <span className="text-xs">{mood.emoji}</span>}
+                  {entry && !mood && <div className="w-1 h-1 bg-primary-foreground rounded-full" />}
+                </button>
+              );
+            })}
           </div>
+          
+          <Button 
+            className="w-full mt-6 rounded-2xl py-6 font-headline text-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() => handleDateSelect(new Date())}
+          >
+            Today's Entry
+          </Button>
         </div>
+      </section>
 
-        {/* Main Action */}
-        <button 
-          onClick={() => setViewingJournal(true)}
-          className="bg-primary/30 border border-primary/50 p-8 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all text-left group"
-        >
-          <div className="flex justify-between items-start mb-4">
-             <div className="bg-white/80 p-3 rounded-2xl">
-               <Moon className="w-8 h-8 text-primary-foreground" />
-             </div>
-             <ChevronRight className="w-6 h-6 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-          </div>
-          <h2 className="text-3xl font-headline text-[#4A3F35]">Write Today</h2>
-          <p className="text-muted-foreground font-body text-lg mt-1">Four simple pages to end your day well.</p>
-        </button>
-
-        {/* History Quick Access */}
-        <Link href="/history" className="flex-1">
-          <div className="bg-white/60 h-full backdrop-blur-sm border border-stone-200/50 p-8 rounded-[2.5rem] shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-            <div className="flex justify-between items-start">
-               <div className="bg-stone-100 p-3 rounded-2xl">
-                 <Calendar className="w-8 h-8 text-[#4A3F35]" />
-               </div>
-            </div>
-            <div>
-              <h2 className="text-3xl font-headline text-[#4A3F35]">View History</h2>
-              <p className="text-muted-foreground font-body text-lg mt-1">Reflect on your past entries.</p>
-            </div>
+      {/* Quick Navigation Cards */}
+      <section className="px-4 grid grid-cols-2 gap-4">
+        <Link href="/goals/monthly" className="bg-secondary/20 p-6 rounded-[2rem] border border-secondary/30 flex flex-col justify-between h-40 group">
+          <Target className="w-8 h-8 text-secondary-foreground group-hover:scale-110 transition-transform" />
+          <div>
+            <h3 className="text-xl font-headline text-secondary-foreground">Monthly Goals</h3>
+            <p className="text-xs text-secondary-foreground/70 font-body">Reset your focus</p>
           </div>
         </Link>
-      </div>
+        <Link href="/goals/yearly" className="bg-primary/20 p-6 rounded-[2rem] border border-primary/30 flex flex-col justify-between h-40 group">
+          <CalendarIcon className="w-8 h-8 text-primary-foreground group-hover:scale-110 transition-transform" />
+          <div>
+            <h3 className="text-xl font-headline text-primary-foreground">Yearly Vision</h3>
+            <p className="text-xs text-primary-foreground/70 font-body">Long term growth</p>
+          </div>
+        </Link>
+      </section>
 
-      <footer className="py-8 text-center text-muted-foreground/60 text-xs font-headline tracking-widest uppercase">
-        Mindfully Crafted for You
-      </footer>
+      {/* Bottom Nav */}
+      <nav className="fixed bottom-6 left-6 right-6 bg-white/70 backdrop-blur-xl border border-white/20 shadow-lg rounded-[2.5rem] px-8 py-4 flex justify-between items-center z-50">
+        <Link href="/" className="text-primary-foreground">
+          <CalendarIcon className="w-6 h-6" />
+        </Link>
+        <Link href="/stats" className="text-muted-foreground hover:text-primary-foreground transition-colors">
+          <TrendingUp className="w-6 h-6" />
+        </Link>
+        <Link href="/settings" className="text-muted-foreground hover:text-primary-foreground transition-colors">
+          <Settings className="w-6 h-6" />
+        </Link>
+      </nav>
     </div>
   );
 }
@@ -117,7 +157,7 @@ function JournalContent() {
 export default function HomePage() {
   return (
     <Suspense fallback={null}>
-      <JournalContent />
+      <Dashboard />
     </Suspense>
   );
 }

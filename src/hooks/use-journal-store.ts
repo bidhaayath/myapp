@@ -1,66 +1,85 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { JournalEntry, ChecklistItem, DEFAULT_CHECKLIST_ITEMS } from '@/lib/types';
+import { JournalEntry, ChecklistItem, DEFAULT_CHECKLIST_ITEMS, Goal } from '@/lib/types';
+import { format, startOfMonth } from 'date-fns';
 
-const STORAGE_KEY = 'daily_four_journal_entries';
+const STORAGE_KEY = 'daily_four_journal_entries_v2';
+const MONTHLY_GOALS_KEY = 'daily_four_monthly_goals';
+const YEARLY_GOALS_KEY = 'daily_four_yearly_goals';
 
 export function useJournalStore() {
   const [entries, setEntries] = useState<Record<string, JournalEntry>>({});
+  const [monthlyGoals, setMonthlyGoals] = useState<Record<string, Goal[]>>({});
+  const [yearlyGoals, setYearlyGoals] = useState<Goal[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        setEntries(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse journal entries', e);
-      }
-    }
+    const savedEntries = localStorage.getItem(STORAGE_KEY);
+    const savedMonthly = localStorage.getItem(MONTHLY_GOALS_KEY);
+    const savedYearly = localStorage.getItem(YEARLY_GOALS_KEY);
+
+    if (savedEntries) setEntries(JSON.parse(savedEntries));
+    if (savedMonthly) setMonthlyGoals(JSON.parse(savedMonthly));
+    if (savedYearly) setYearlyGoals(JSON.parse(savedYearly));
+    
     setIsLoaded(true);
   }, []);
 
-  const saveEntries = (newEntries: Record<string, JournalEntry>) => {
-    setEntries(newEntries);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newEntries));
+  const saveToStorage = (key: string, data: any) => {
+    localStorage.setItem(key, JSON.stringify(data));
   };
 
   const getEntry = (date: string): JournalEntry => {
     if (entries[date]) return entries[date];
 
-    // Create a new empty entry if it doesn't exist
-    const newEntry: JournalEntry = {
+    return {
       date,
       checklist: DEFAULT_CHECKLIST_ITEMS.map((label, index) => ({
-        id: `item-${index}`,
+        id: `default-${index}`,
         label,
         checked: false,
       })),
+      customChecklist: [],
       reflectionPositive: { grateful: '', learned: '' },
       reflectionGrowth: { drained: '', improve: '' },
       mood: '',
       freeWriting: '',
     };
-    return newEntry;
   };
 
   const updateEntry = (date: string, updates: Partial<JournalEntry>) => {
     const currentEntry = getEntry(date);
     const updatedEntry = { ...currentEntry, ...updates };
     const newEntries = { ...entries, [date]: updatedEntry };
-    saveEntries(newEntries);
+    setEntries(newEntries);
+    saveToStorage(STORAGE_KEY, newEntries);
+  };
+
+  // Monthly Goals
+  const getMonthlyGoals = (date: Date) => {
+    const key = format(startOfMonth(date), 'yyyy-MM');
+    return monthlyGoals[key] || [];
+  };
+
+  const updateMonthlyGoals = (date: Date, goals: Goal[]) => {
+    const key = format(startOfMonth(date), 'yyyy-MM');
+    const newMonthly = { ...monthlyGoals, [key]: goals };
+    setMonthlyGoals(newMonthly);
+    saveToStorage(MONTHLY_GOALS_KEY, newMonthly);
+  };
+
+  // Yearly Goals
+  const updateYearlyGoals = (goals: Goal[]) => {
+    setYearlyGoals(goals);
+    saveToStorage(YEARLY_GOALS_KEY, goals);
   };
 
   const getStreak = () => {
-    const dates = Object.keys(entries).sort().reverse();
     let streak = 0;
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Simple streak calculation
     let checkDate = new Date();
     while (true) {
-      const dateStr = checkDate.toISOString().split('T')[0];
+      const dateStr = format(checkDate, 'yyyy-MM-dd');
       if (entries[dateStr]) {
         streak++;
         checkDate.setDate(checkDate.getDate() - 1);
@@ -73,9 +92,14 @@ export function useJournalStore() {
 
   return {
     entries,
+    monthlyGoals,
+    yearlyGoals,
     isLoaded,
     getEntry,
     updateEntry,
+    getMonthlyGoals,
+    updateMonthlyGoals,
+    updateYearlyGoals,
     getStreak,
   };
 }

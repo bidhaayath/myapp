@@ -50,7 +50,7 @@ function Dashboard() {
       <header className="px-6 pt-12 pb-6 flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-headline text-[#4A3F35]">Daily Four</h1>
-          <p className="text-muted-foreground font-body italic">Mindful journey</p>
+          <p className="text-muted-foreground font-body italic">Creative mindful journey</p>
         </div>
         <div className="bg-white/80 p-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-secondary-foreground" />
@@ -77,42 +77,44 @@ function Dashboard() {
 
           <div className="grid grid-cols-7 gap-2">
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <div key={i} className="text-center text-[10px] font-headline text-muted-foreground/60 uppercase tracking-widest py-2">
+              <div key={`${d}-${i}`} className="text-center text-[10px] font-headline text-muted-foreground/60 uppercase tracking-widest py-2">
                 {d}
               </div>
             ))}
             {days.map((day, i) => {
               const dateStr = format(day, 'yyyy-MM-dd');
               const entry = entries[dateStr];
-              const mood = MOODS.find(m => m.label === entry?.mood);
+              const moodInfo = MOODS.find(m => m.label === entry?.mood);
               const isToday = isSameDay(day, new Date());
+              const isEntryDone = entry && (entry.freeWriting || entry.drawingData || entry.checklist.some(i => i.checked));
 
               return (
                 <button
                   key={dateStr}
                   onClick={() => handleDateSelect(day)}
                   className={cn(
-                    "aspect-square rounded-2xl flex flex-col items-center justify-center relative transition-all",
-                    isToday ? "bg-primary/20 ring-1 ring-primary" : "hover:bg-stone-50",
-                    mood ? "bg-opacity-40" : ""
+                    "aspect-square rounded-2xl flex flex-col items-center justify-center relative transition-all border",
+                    isToday ? "border-primary-foreground/30 shadow-inner" : "border-transparent",
+                    !moodInfo && "hover:bg-stone-50"
                   )}
-                  style={mood ? { backgroundColor: `${mood.color}44` } : {}}
+                  style={moodInfo ? { backgroundColor: moodInfo.color } : {}}
                 >
                   <span className={cn(
-                    "text-sm font-headline mb-0.5",
-                    isToday ? "text-[#4A3F35]" : "text-stone-500"
-                  )}>
+                    "text-xs font-headline mb-0.5",
+                    isToday ? "font-bold text-[#4A3F35]" : "text-stone-500",
+                    moodInfo && "text-opacity-80"
+                  )} style={moodInfo ? { color: moodInfo.textColor } : {}}>
                     {format(day, 'd')}
                   </span>
-                  {mood && <span className="text-xs">{mood.emoji}</span>}
-                  {entry && !mood && <div className="w-1 h-1 bg-primary-foreground rounded-full" />}
+                  {moodInfo && <span className="text-xs">{moodInfo.emoji}</span>}
+                  {isEntryDone && !moodInfo && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary-foreground/20 rounded-full" />}
                 </button>
               );
             })}
           </div>
           
           <Button 
-            className="w-full mt-6 rounded-2xl py-6 font-headline text-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="w-full mt-6 rounded-2xl py-6 font-headline text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
             onClick={() => handleDateSelect(new Date())}
           >
             Today's Entry
@@ -122,14 +124,14 @@ function Dashboard() {
 
       {/* Quick Navigation Cards */}
       <section className="px-4 grid grid-cols-2 gap-4">
-        <Link href="/goals/monthly" className="bg-secondary/20 p-6 rounded-[2rem] border border-secondary/30 flex flex-col justify-between h-40 group">
+        <Link href="/goals/monthly" className="bg-secondary/20 p-6 rounded-[2rem] border border-secondary/30 flex flex-col justify-between h-40 group shadow-sm transition-all active:scale-95">
           <Target className="w-8 h-8 text-secondary-foreground group-hover:scale-110 transition-transform" />
           <div>
             <h3 className="text-xl font-headline text-secondary-foreground">Monthly Goals</h3>
             <p className="text-xs text-secondary-foreground/70 font-body">Reset your focus</p>
           </div>
         </Link>
-        <Link href="/goals/yearly" className="bg-primary/20 p-6 rounded-[2rem] border border-primary/30 flex flex-col justify-between h-40 group">
+        <Link href="/goals/yearly" className="bg-primary/20 p-6 rounded-[2rem] border border-primary/30 flex flex-col justify-between h-40 group shadow-sm transition-all active:scale-95">
           <CalendarIcon className="w-8 h-8 text-primary-foreground group-hover:scale-110 transition-transform" />
           <div>
             <h3 className="text-xl font-headline text-primary-foreground">Yearly Vision</h3>

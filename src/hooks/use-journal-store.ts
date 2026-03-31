@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { JournalEntry, ChecklistItem, DEFAULT_CHECKLIST_ITEMS, Goal } from '@/lib/types';
-import { format, startOfMonth } from 'date-fns';
+import { format, startOfMonth, parseISO, isSameDay, subDays } from 'date-fns';
 
-const STORAGE_KEY = 'daily_four_journal_entries_v2';
-const MONTHLY_GOALS_KEY = 'daily_four_monthly_goals';
-const YEARLY_GOALS_KEY = 'daily_four_yearly_goals';
+const STORAGE_KEY = 'daily_four_journal_entries_v3';
+const MONTHLY_GOALS_KEY = 'daily_four_monthly_goals_v3';
+const YEARLY_GOALS_KEY = 'daily_four_yearly_goals_v3';
 
 export function useJournalStore() {
   const [entries, setEntries] = useState<Record<string, JournalEntry>>({});
@@ -45,6 +45,7 @@ export function useJournalStore() {
       reflectionGrowth: { drained: '', improve: '' },
       mood: '',
       freeWriting: '',
+      stickers: [],
     };
   };
 
@@ -56,7 +57,6 @@ export function useJournalStore() {
     saveToStorage(STORAGE_KEY, newEntries);
   };
 
-  // Monthly Goals
   const getMonthlyGoals = (date: Date) => {
     const key = format(startOfMonth(date), 'yyyy-MM');
     return monthlyGoals[key] || [];
@@ -69,7 +69,6 @@ export function useJournalStore() {
     saveToStorage(MONTHLY_GOALS_KEY, newMonthly);
   };
 
-  // Yearly Goals
   const updateYearlyGoals = (goals: Goal[]) => {
     setYearlyGoals(goals);
     saveToStorage(YEARLY_GOALS_KEY, goals);
@@ -82,7 +81,7 @@ export function useJournalStore() {
       const dateStr = format(checkDate, 'yyyy-MM-dd');
       if (entries[dateStr]) {
         streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
+        checkDate = subDays(checkDate, 1);
       } else {
         break;
       }

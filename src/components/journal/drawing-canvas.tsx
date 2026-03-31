@@ -1,14 +1,17 @@
 "use client"
 
 import React, { useRef, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Eraser, Pencil, Trash2 } from 'lucide-react';
 
 interface DrawingCanvasProps {
   initialData?: string;
   onSave: (dataUrl: string) => void;
   isEnabled: boolean;
+  tool: 'pen' | 'eraser';
 }
 
-export function DrawingCanvas({ initialData, onSave, isEnabled }: DrawingCanvasProps) {
+export function DrawingCanvas({ initialData, onSave, isEnabled, tool }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
@@ -20,15 +23,13 @@ export function DrawingCanvas({ initialData, onSave, isEnabled }: DrawingCanvasP
 
     if (initialData) {
       const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0);
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      };
       img.src = initialData;
     }
-
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#4A3F35';
-  }, []);
+  }, [initialData]);
 
   const getCoords = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
@@ -36,9 +37,14 @@ export function DrawingCanvas({ initialData, onSave, isEnabled }: DrawingCanvasP
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    // Scale coordinates based on internal canvas size vs displayed size
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
     };
   };
 
@@ -47,8 +53,21 @@ export function DrawingCanvas({ initialData, onSave, isEnabled }: DrawingCanvasP
     const { x, y } = getCoords(e);
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
+
     ctx.beginPath();
     ctx.moveTo(x, y);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    
+    if (tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = 20;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#4A3F35';
+    }
+    
     setIsDrawing(true);
   };
 
@@ -57,6 +76,7 @@ export function DrawingCanvas({ initialData, onSave, isEnabled }: DrawingCanvasP
     const { x, y } = getCoords(e);
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
+    
     ctx.lineTo(x, y);
     ctx.stroke();
   };
@@ -78,7 +98,7 @@ export function DrawingCanvas({ initialData, onSave, isEnabled }: DrawingCanvasP
   };
 
   return (
-    <div className="relative w-full aspect-[3/4] bg-stone-50/30 rounded-2xl overflow-hidden border border-stone-100 shadow-inner">
+    <div className="relative w-full aspect-[3/4] bg-stone-50/30 rounded-2xl overflow-hidden border border-stone-100 shadow-inner group">
       <canvas
         ref={canvasRef}
         width={600}
@@ -93,12 +113,17 @@ export function DrawingCanvas({ initialData, onSave, isEnabled }: DrawingCanvasP
         className="w-full h-full touch-none"
       />
       {isEnabled && (
-        <button 
-          onClick={clear}
-          className="absolute bottom-4 right-4 bg-white/80 backdrop-blur px-3 py-1 rounded-full text-xs font-headline text-muted-foreground shadow-sm"
-        >
-          Clear Canvas
-        </button>
+        <div className="absolute bottom-4 right-4 flex gap-2">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={clear}
+            className="bg-white/90 backdrop-blur rounded-full text-xs font-headline shadow-sm hover:bg-red-50 hover:text-red-500 transition-colors"
+          >
+            <Trash2 className="w-3 h-3 mr-1" />
+            Clear
+          </Button>
+        </div>
       )}
     </div>
   );

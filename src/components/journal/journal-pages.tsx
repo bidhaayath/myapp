@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit2, Pencil, Type, Sticker as StickerIcon } from 'lucide-react';
+import { Plus, Trash2, Edit2, Pencil, Type, Sticker as StickerIcon, Eraser } from 'lucide-react';
 import { DrawingCanvas } from './drawing-canvas';
 import { StickerLayer } from './sticker-layer';
 
@@ -193,6 +193,7 @@ export function PageReflectionGrowth({ entry, onUpdate }: PageProps) {
 
 export function PageFreeWriting({ entry, onUpdate }: PageProps) {
   const [mode, setMode] = useState<'write' | 'draw' | 'sticker'>('write');
+  const [drawingTool, setDrawingTool] = useState<'pen' | 'eraser'>('pen');
 
   const addSticker = (type: string) => {
     const newSticker = {
@@ -234,7 +235,7 @@ export function PageFreeWriting({ entry, onUpdate }: PageProps) {
       <div className="flex-1 flex flex-col relative min-h-[500px]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-headline text-[#4A3F35]">Creative Journal</h3>
-          <div className="flex bg-stone-100 p-1 rounded-xl">
+          <div className="flex bg-stone-100 p-1 rounded-xl gap-1">
             <Button 
               variant={mode === 'write' ? 'secondary' : 'ghost'} 
               size="sm" 
@@ -262,6 +263,29 @@ export function PageFreeWriting({ entry, onUpdate }: PageProps) {
           </div>
         </div>
 
+        {mode === 'draw' && (
+          <div className="flex gap-2 mb-4 animate-in fade-in slide-in-from-top-1">
+             <Button 
+              variant={drawingTool === 'pen' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              onClick={() => setDrawingTool('pen')}
+              className="h-8 rounded-full text-xs font-headline"
+             >
+               <Pencil className="w-3 h-3 mr-1" />
+               Pen
+             </Button>
+             <Button 
+              variant={drawingTool === 'eraser' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              onClick={() => setDrawingTool('eraser')}
+              className="h-8 rounded-full text-xs font-headline"
+             >
+               <Eraser className="w-3 h-3 mr-1" />
+               Eraser
+             </Button>
+          </div>
+        )}
+
         <div className="flex-1 relative">
           <Textarea
             value={entry.freeWriting}
@@ -278,6 +302,7 @@ export function PageFreeWriting({ entry, onUpdate }: PageProps) {
               initialData={entry.drawingData} 
               onSave={(data) => onUpdate({ drawingData: data })}
               isEnabled={mode === 'draw'}
+              tool={drawingTool}
              />
           </div>
 
@@ -289,7 +314,7 @@ export function PageFreeWriting({ entry, onUpdate }: PageProps) {
         </div>
 
         {mode === 'sticker' && (
-          <div className="mt-4 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm flex flex-wrap gap-4 justify-center">
+          <div className="mt-4 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm flex flex-wrap gap-4 justify-center animate-in slide-in-from-bottom-2">
             {STICKER_OPTIONS.map(s => (
               <button 
                 key={s} 

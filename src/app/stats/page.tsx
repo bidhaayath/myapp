@@ -3,17 +3,36 @@
 import React from 'react';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, BarChart2, Calendar, Smile, Award, PieChart, CheckCircle2, TrendingUp, History } from 'lucide-react';
-import { MOODS, DEFAULT_CHECKLIST_ITEMS } from '@/lib/types';
+import { ChevronLeft, BarChart2, Calendar, Smile, Award, PieChart, CheckCircle2, TrendingUp, Target, Star, History } from 'lucide-react';
+import { MOODS, DEFAULT_CHECKLIST_ITEMS, Goal } from '@/lib/types';
 import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  PieChart as RePieChart, Pie, Cell, LineChart, Line, AreaChart, Area
+  PieChart as RePieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 
 export default function StatisticsPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
   const { entries, isLoaded, getStreak } = useJournalStore();
+
+  // Fetch monthly goals collection
+  const monthlyGoalsRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, 'users', user.uid, 'monthlyGoals');
+  }, [user, firestore]);
+  const { data: allMonthlyGoals } = useCollection<{ goals: Goal[] }>(monthlyGoalsRef);
+
+  // Fetch yearly goals collection
+  const yearlyGoalsRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, 'users', user.uid, 'yearlyGoals');
+  }, [user, firestore]);
+  const { data: allYearlyGoals } = useCollection<{ goals: Goal[] }>(yearlyGoalsRef);
 
   if (!isLoaded) return null;
 
@@ -38,13 +57,6 @@ export default function StatisticsPage() {
     const rate = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
     return { label, count: completedCount, rate };
   }).sort((a, b) => b.rate - a.rate);
-
-  // Overall Completion Rates
-  const totalChecklistItems = entryList.reduce((acc, entry) => 
-    acc + entry.checklist.length + entry.customChecklist.length, 0);
-  const totalCompleted = entryList.reduce((acc, entry) => 
-    acc + entry.checklist.filter(i => i.checked).length + entry.customChecklist.filter(i => i.checked).length, 0);
-  const overallCompletionRate = totalChecklistItems > 0 ? Math.round((totalCompleted / totalChecklistItems) * 100) : 0;
 
   const streak = getStreak();
 
@@ -73,6 +85,80 @@ export default function StatisticsPage() {
           <p className="text-[10px] uppercase tracking-widest text-secondary-foreground/60 font-headline">Current Streak</p>
         </Card>
       </div>
+
+      {/* Yearly Vision Stats */}
+      {allYearlyGoals && allYearlyGoals.length > 0 && (
+        <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <Star className="w-6 h-6 text-primary-foreground" />
+            <h2 className="text-xl font-headline text-[#4A3F35]">Yearly Vision</h2>
+          </div>
+          <div className="space-y-6">
+            {allYearlyGoals.map((yearDoc) => {
+              const goals = yearDoc.goals || [];
+              const completed = goals.filter(g => g.completed).length;
+              const total = goals.length;
+              const progress = total > 0 ? (completed / total) * 100 : 0;
+              return (
+                <div key={yearDoc.id} className="space-y-3">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-lg font-headline text-[#4A3F35]">{yearDoc.id} Growth</span>
+                    <span className="text-xs text-muted-foreground">{completed}/{total} Achieved</span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
+                  <p className="text-xs text-muted-foreground italic font-body">
+                    {progress === 100 ? "Amazing! You've reached your vision." : `${Math.round(progress)}% of your yearly intentions completed.`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Monthly Goals Breakdown */}
+      {allMonthlyGoals && allMonthlyGoals.length > 0 && (
+        <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <Target className="w-6 h-6 text-secondary-foreground" />
+            <h2 className="text-xl font-headline text-[#4A3F35]">Monthly Momentum</h2>
+          </div>
+          <div className="space-y-8">
+            {[...allMonthlyGoals].reverse().map((monthDoc) => {
+              const goals = monthDoc.goals || [];
+              const completed = goals.filter(g => g.completed).length;
+              const total = goals.length;
+              const progress = total > 0 ? (completed / total) * 100 : 0;
+              
+              // Format monthId (YYYY-MM) to readable month
+              const [year, month] = monthDoc.id.split('-');
+              const date = new Date(parseInt(year), parseInt(month) - 1);
+              const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+              return (
+                <div key={monthDoc.id} className="group">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-headline text-stone-600">{monthName}</span>
+                    <span className="text-xs font-body font-medium text-secondary-foreground bg-secondary/20 px-2 py-0.5 rounded-full">
+                      {Math.round(progress)}% Done
+                    </span>
+                  </div>
+                  <div className="relative h-1.5 w-full bg-stone-50 rounded-full overflow-hidden">
+                    <div 
+                      className="absolute inset-y-0 left-0 bg-secondary transition-all duration-1000" 
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1">
+                     <span className="text-[10px] text-stone-400 font-body">{total} Goals set</span>
+                     <span className="text-[10px] text-stone-400 font-body">{completed} Completed</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Mood Distribution */}
       <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8 overflow-hidden">
@@ -124,7 +210,7 @@ export default function StatisticsPage() {
           <h2 className="text-xl font-headline text-[#4A3F35]">Habit Progress</h2>
         </div>
         <div className="space-y-6">
-          {habitStats.slice(0, 5).map((habit) => (
+          {habitStats.slice(0, 8).map((habit) => (
             <div key={habit.label} className="space-y-2">
               <div className="flex justify-between items-baseline">
                 <span className="text-sm font-body text-stone-700">{habit.label}</span>
@@ -132,7 +218,7 @@ export default function StatisticsPage() {
               </div>
               <div className="relative h-2 w-full bg-stone-50 rounded-full overflow-hidden">
                 <div 
-                  className="absolute inset-y-0 left-0 bg-secondary transition-all duration-1000" 
+                  className="absolute inset-y-0 left-0 bg-primary-foreground/30 transition-all duration-1000" 
                   style={{ width: `${habit.rate}%` }}
                 />
               </div>
@@ -141,36 +227,8 @@ export default function StatisticsPage() {
         </div>
       </Card>
 
-      {/* Overall Completion Timeline */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
-        <div className="flex items-center gap-3 mb-6">
-          <TrendingUp className="w-6 h-6 text-primary-foreground" />
-          <h2 className="text-xl font-headline text-[#4A3F35]">Completion Rate</h2>
-        </div>
-        <div className="text-center py-4">
-          <div className="text-5xl font-headline text-[#4A3F35] mb-2">{overallCompletionRate}%</div>
-          <p className="text-sm text-muted-foreground font-body italic">Average daily completion</p>
-          <div className="h-32 w-full mt-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={entryList.slice(-7).map(e => ({ 
-                date: e.date, 
-                val: Math.round((e.checklist.filter(i => i.checked).length / e.checklist.length) * 100) 
-              }))}>
-                <defs>
-                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#E6D8CE" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#E6D8CE" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <Area type="monotone" dataKey="val" stroke="#4A3F35" fillOpacity={1} fill="url(#colorVal)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </Card>
-
       <p className="text-center text-stone-400 italic font-body text-sm mt-8">
-        "Your consistency is your superpower."
+        "Growth is a slow process, but quitting won't speed it up."
       </p>
     </div>
   );

@@ -1,27 +1,37 @@
+
 "use client"
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { JournalContainer } from '@/components/journal/journal-container';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MOODS } from '@/lib/types';
 import Link from 'next/link';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 function Dashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { entries, isLoaded, getStreak, getEntry, updateEntry } = useJournalStore();
+  const { entries, isLoaded, getStreak, getEntry, updateEntry, user } = useJournalStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const auth = useAuth();
 
   const dateFromUrl = searchParams.get('date');
   const activeDate = dateFromUrl || format(new Date(), 'yyyy-MM-dd');
   const isJournalOpen = !!dateFromUrl;
 
-  if (!isLoaded) return null;
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.push('/login');
+    }
+  }, [isLoaded, user, router]);
+
+  if (!isLoaded || !user) return null;
 
   const handleDateSelect = (date: Date) => {
     router.push(`/?date=${format(date, 'yyyy-MM-dd')}`);
@@ -52,9 +62,15 @@ function Dashboard() {
           <h1 className="text-4xl font-headline text-[#4A3F35]">BT Journal</h1>
           <p className="text-muted-foreground font-body italic">Creative mindful journey</p>
         </div>
-        <div className="bg-white/80 p-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-secondary-foreground" />
-          <span className="font-headline text-lg">{streak} Day Streak</span>
+        <div className="flex flex-col items-end gap-2">
+          <div className="bg-white/80 p-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-secondary-foreground" />
+            <span className="font-headline text-lg">{streak} Day Streak</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => signOut(auth)} className="text-muted-foreground hover:text-red-400">
+            <LogOut className="w-4 h-4 mr-1" />
+            Sign Out
+          </Button>
         </div>
       </header>
 

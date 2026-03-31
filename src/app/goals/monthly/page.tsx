@@ -1,23 +1,36 @@
+
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { format } from 'date-fns';
+import { format, startOfMonth } from 'date-fns';
 import Link from 'next/link';
+import { useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
+import { Goal } from '@/lib/types';
 
 export default function MonthlyGoalsPage() {
-  const { getMonthlyGoals, updateMonthlyGoals, isLoaded } = useJournalStore();
+  const { user, firestore, isLoaded, updateMonthlyGoals } = useJournalStore();
   const [newGoal, setNewGoal] = useState('');
   const today = new Date();
-  
-  if (!isLoaded) return null;
+  const monthId = format(startOfMonth(today), 'yyyy-MM');
 
-  const goals = getMonthlyGoals(today);
+  const monthlyRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid, 'monthlyGoals', monthId);
+  }, [user, firestore, monthId]);
+
+  const { data: monthlyData, isLoading: isMonthlyLoading } = useDoc<{ goals: Goal[] }>(monthlyRef);
+
+  if (!isLoaded || isMonthlyLoading) return null;
+
+  const goals = monthlyData?.goals || [];
   const completed = goals.filter(g => g.completed).length;
   const progress = goals.length > 0 ? (completed / goals.length) * 100 : 0;
 
@@ -102,8 +115,4 @@ export default function MonthlyGoalsPage() {
       </p>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }

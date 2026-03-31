@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState } from 'react';
@@ -7,26 +8,40 @@ import { ChevronLeft, Plus, Trash2, Star } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
+import { useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
+import { Goal } from '@/lib/types';
 
 export default function YearlyGoalsPage() {
-  const { yearlyGoals, updateYearlyGoals, isLoaded } = useJournalStore();
+  const { user, firestore, isLoaded, updateYearlyGoals } = useJournalStore();
   const [newGoal, setNewGoal] = useState('');
-  
-  if (!isLoaded) return null;
+  const yearId = new Date().getFullYear().toString();
+
+  const yearlyRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid, 'yearlyGoals', yearId);
+  }, [user, firestore, yearId]);
+
+  const { data: yearlyData, isLoading: isYearlyLoading } = useDoc<{ goals: Goal[] }>(yearlyRef);
+
+  if (!isLoaded || isYearlyLoading) return null;
+
+  const goals = yearlyData?.goals || [];
 
   const addGoal = () => {
     if (!newGoal.trim()) return;
     const goal = { id: Date.now().toString(), text: newGoal, completed: false };
-    updateYearlyGoals([...yearlyGoals, goal]);
+    updateYearlyGoals([...goals, goal]);
     setNewGoal('');
   };
 
   const toggleGoal = (id: string) => {
-    updateYearlyGoals(yearlyGoals.map(g => g.id === id ? { ...g, completed: !g.completed } : g));
+    updateYearlyGoals(goals.map(g => g.id === id ? { ...g, completed: !g.completed } : g));
   };
 
   const removeGoal = (id: string) => {
-    updateYearlyGoals(yearlyGoals.filter(g => g.id !== id));
+    updateYearlyGoals(goals.filter(g => g.id !== id));
   };
 
   return (
@@ -44,12 +59,12 @@ export default function YearlyGoalsPage() {
       <div className="bg-primary/20 rounded-[2.5rem] p-8 border border-primary/30 mb-8 relative overflow-hidden">
         <Star className="absolute top-4 right-4 w-12 h-12 text-primary/30" />
         <p className="text-sm font-headline uppercase tracking-widest text-primary-foreground mb-2">
-          {new Date().getFullYear()} Vision
+          {yearId} Vision
         </p>
         <h2 className="text-3xl font-headline text-primary-foreground mb-6">Long Term Growth</h2>
         
         <div className="space-y-6">
-          {yearlyGoals.map((goal) => (
+          {goals.map((goal) => (
             <div key={goal.id} className="flex items-center gap-4 group bg-white/40 p-4 rounded-2xl backdrop-blur-sm border border-white/40">
               <Checkbox 
                 checked={goal.completed} 
@@ -84,8 +99,4 @@ export default function YearlyGoalsPage() {
       </div>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
 }

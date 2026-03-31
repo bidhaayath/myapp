@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview This file implements a Genkit flow to provide gentle, personalized writing prompts
- * for the Daily Four journaling app's reflection sections.
+ * for BT Journal's reflection sections.
  *
  * - inspireReflectionPrompts - A function that handles generating reflection prompts.
  * - InspireReflectionPromptsInput - The input type for the inspireReflectionPrompts function.

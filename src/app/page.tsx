@@ -2,7 +2,7 @@
 
 import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { JournalContainer } from '@/components/journal/journal-container';
 import { Button } from '@/components/ui/button';
@@ -49,7 +49,7 @@ function Dashboard() {
       {/* Header */}
       <header className="px-6 pt-12 pb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-headline text-[#4A3F35]">Daily Four</h1>
+          <h1 className="text-4xl font-headline text-[#4A3F35]">BT Journal</h1>
           <p className="text-muted-foreground font-body italic">Creative mindful journey</p>
         </div>
         <div className="bg-white/80 p-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2">

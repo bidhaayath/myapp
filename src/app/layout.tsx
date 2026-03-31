@@ -2,8 +2,8 @@ import type {Metadata} from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Daily Four',
-  description: 'Your personal daily journaling app',
+  title: 'BT Journal',
+  description: 'BT Journal – your daily self-care and reflection space',
 };
 
 export default function RootLayout({

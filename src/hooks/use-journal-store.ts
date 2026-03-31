@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { JournalEntry, ChecklistItem, DEFAULT_CHECKLIST_ITEMS, Goal } from '@/lib/types';
 import { format, startOfMonth, parseISO, isSameDay, subDays } from 'date-fns';
 
-const STORAGE_KEY = 'daily_four_journal_entries_v3';
-const MONTHLY_GOALS_KEY = 'daily_four_monthly_goals_v3';
-const YEARLY_GOALS_KEY = 'daily_four_yearly_goals_v3';
+const STORAGE_KEY = 'bt_journal_entries_v1';
+const MONTHLY_GOALS_KEY = 'bt_journal_monthly_goals_v1';
+const YEARLY_GOALS_KEY = 'bt_journal_yearly_goals_v1';
 
 export function useJournalStore() {
   const [entries, setEntries] = useState<Record<string, JournalEntry>>({});

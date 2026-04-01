@@ -114,12 +114,12 @@ export function useJournalStore() {
     let starsToAdd = 0;
     const newBadges: string[] = [...stats.badges];
 
-    // 1. Habit Reward: 50% or more completed
+    // 1. Habit Reward: MORE THAN 50% completed
     const totalHabits = newEntry.checklist.length + newEntry.customChecklist.length;
     const completedHabits = newEntry.checklist.filter(i => i.checked).length + newEntry.customChecklist.filter(i => i.checked).length;
     const habitPercent = totalHabits > 0 ? (completedHabits / totalHabits) : 0;
 
-    if (habitPercent >= 0.5 && !rewards.habitReward) {
+    if (habitPercent > 0.5 && !rewards.habitReward) {
       rewards.habitReward = true;
       heartsToAdd += 1;
     }

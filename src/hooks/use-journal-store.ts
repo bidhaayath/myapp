@@ -1,10 +1,10 @@
 
 "use client"
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
-import { JournalEntry, ALL_DEFAULT_HABIT_LABELS, Goal, Routine } from '@/lib/types';
+import { JournalEntry, ALL_DEFAULT_HABIT_LABELS, Goal, Routine, UserStats } from '@/lib/types';
 import { format, startOfMonth, subDays } from 'date-fns';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -21,7 +21,22 @@ export function useJournalStore() {
   const { data: routinesData, isLoading: isRoutinesLoading } = useDoc<{ items: Routine[] }>(routinesRef);
   const globalRoutines = useMemo(() => routinesData?.items || [], [routinesData]);
 
-  // 2. Fetch Daily Entries
+  // 2. Fetch User Stats (Rewards)
+  const statsRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid, 'settings', 'stats');
+  }, [user, firestore]);
+
+  const { data: statsData, isLoading: isStatsLoading } = useDoc<UserStats>(statsRef);
+  const stats: UserStats = useMemo(() => statsData || { 
+    userId: user?.uid || '', 
+    hearts: 0, 
+    stars: 0, 
+    petals: 0, 
+    badges: [] 
+  }, [statsData, user]);
+
+  // 3. Fetch Daily Entries
   const entriesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return collection(firestore, 'users', user.uid, 'dailyEntries');
@@ -53,12 +68,8 @@ export function useJournalStore() {
     return doc(firestore, 'users', user.uid, 'yearlyGoals', year);
   };
 
-  // 3. Merged Entry Logic
-  // This combines Firestore entry state with the current global routine definition
   const getEntry = (date: string): JournalEntry => {
     const existing = entries[date];
-    
-    // The "Full List" of routine labels active TODAY
     const routineLabels = [...ALL_DEFAULT_HABIT_LABELS, ...globalRoutines.map(r => r.label)];
     
     const baseChecklist = routineLabels.map((label, index) => {
@@ -80,19 +91,77 @@ export function useJournalStore() {
       freeWriting: existing?.freeWriting || '',
       stickers: existing?.stickers || [],
       drawingData: existing?.drawingData || '',
+      rewardsClaimed: existing?.rewardsClaimed || {}
     };
   };
+
+  const updateStats = useCallback((updates: Partial<UserStats>) => {
+    if (!user || !statsRef) return;
+    setDocumentNonBlocking(statsRef, { ...stats, ...updates, userId: user.uid }, { merge: true });
+  }, [user, statsRef, stats]);
 
   const updateEntry = (date: string, updates: Partial<JournalEntry>) => {
     if (!user) return;
     const ref = getEntryRef(date);
     if (!ref) return;
-    const entry = getEntry(date);
-    const finalData = { ...entry, ...updates, userId: user.uid, date };
+    
+    const currentEntry = getEntry(date);
+    const newEntry = { ...currentEntry, ...updates };
+    
+    // Reward Logic
+    const rewards = { ...newEntry.rewardsClaimed };
+    let heartsToAdd = 0;
+    let starsToAdd = 0;
+    let petalsToAdd = 0;
+    const newBadges: string[] = [...stats.badges];
+
+    // 1. Habit Rewards
+    const totalHabits = newEntry.checklist.length + newEntry.customChecklist.length;
+    const completedHabits = newEntry.checklist.filter(i => i.checked).length + newEntry.customChecklist.filter(i => i.checked).length;
+    const habitPercent = totalHabits > 0 ? (completedHabits / totalHabits) : 0;
+
+    if (habitPercent >= 0.5 && !rewards.habit50) {
+      rewards.habit50 = true;
+      heartsToAdd += 1;
+    }
+    if (habitPercent >= 1.0 && !rewards.habit100) {
+      rewards.habit100 = true;
+      heartsToAdd += 2;
+    }
+
+    // 2. Journaling Rewards
+    const hasAnyReflection = !!(newEntry.reflectionPositive.grateful || newEntry.reflectionPositive.learned || newEntry.reflectionGrowth.drained || newEntry.reflectionGrowth.improve || newEntry.freeWriting);
+    if (hasAnyReflection && !rewards.journalAny) {
+      rewards.journalAny = true;
+      starsToAdd += 1;
+    }
+
+    const hasAllReflection = !!(newEntry.reflectionPositive.grateful && newEntry.reflectionPositive.learned && newEntry.reflectionGrowth.drained && newEntry.reflectionGrowth.improve);
+    if (hasAllReflection && !rewards.journalAll) {
+      rewards.journalAll = true;
+      starsToAdd += 2;
+    }
+
+    // 3. Perfect Day Badge
+    if (habitPercent >= 1.0 && hasAllReflection && !newBadges.includes('perfect-day')) {
+      newBadges.push('perfect-day');
+      petalsToAdd += 10;
+    }
+
+    // Apply updates
+    const finalData = { ...newEntry, rewardsClaimed: rewards, userId: user.uid, date };
     setDocumentNonBlocking(ref, finalData, { merge: true });
+
+    if (heartsToAdd > 0 || starsToAdd > 0 || petalsToAdd > 0 || newBadges.length > stats.badges.length) {
+      updateStats({
+        hearts: stats.hearts + heartsToAdd,
+        stars: stats.stars + starsToAdd,
+        petals: stats.petals + petalsToAdd,
+        badges: newBadges
+      });
+    }
   };
 
-  // 4. Global Routine Management
   const updateGlobalRoutines = (newRoutines: Routine[]) => {
     if (!user || !routinesRef) return;
     setDocumentNonBlocking(routinesRef, { userId: user.uid, items: newRoutines }, { merge: true });
@@ -116,6 +185,16 @@ export function useJournalStore() {
     const monthId = format(startOfMonth(date), 'yyyy-MM');
     const ref = getMonthlyRef(monthId);
     if (!ref) return;
+    
+    // Reward for completion
+    const wasAllComplete = goals.length > 0 && goals.every(g => g.completed);
+    if (wasAllComplete && !stats.badges.includes('monthly-achiever')) {
+      updateStats({ 
+        petals: stats.petals + 20, 
+        badges: [...stats.badges, 'monthly-achiever'] 
+      });
+    }
+
     setDocumentNonBlocking(ref, { userId: user.uid, goals }, { merge: true });
   };
 
@@ -123,10 +202,19 @@ export function useJournalStore() {
     if (!user) return;
     const ref = getYearlyRef(year);
     if (!ref) return;
+
+    const completedOne = goals.some(g => g.completed);
+    if (completedOne && !stats.badges.includes('yearly-dreamer')) {
+      updateStats({ 
+        petals: stats.petals + 50, 
+        badges: [...stats.badges, 'yearly-dreamer'] 
+      });
+    }
+
     setDocumentNonBlocking(ref, { userId: user.uid, goals }, { merge: true });
   };
 
-  const getStreak = () => {
+  const getStreak = useCallback(() => {
     let streak = 0;
     let checkDate = new Date();
     while (true) {
@@ -139,12 +227,38 @@ export function useJournalStore() {
       }
     }
     return streak;
-  };
+  }, [entries]);
+
+  // Check for streak milestones
+  useMemo(() => {
+    if (!user || isStatsLoading) return;
+    const streak = getStreak();
+    const newBadges = [...stats.badges];
+    let petalsToAdd = 0;
+
+    if (streak >= 3 && !newBadges.includes('streak-3')) {
+      newBadges.push('streak-3');
+      petalsToAdd += 5;
+    }
+    if (streak >= 7 && !newBadges.includes('streak-7')) {
+      newBadges.push('streak-7');
+      petalsToAdd += 15;
+    }
+    if (streak >= 30 && !newBadges.includes('streak-30')) {
+      newBadges.push('streak-30');
+      petalsToAdd += 50;
+    }
+
+    if (newBadges.length > stats.badges.length) {
+      updateStats({ badges: newBadges, petals: stats.petals + petalsToAdd });
+    }
+  }, [getStreak, stats, isStatsLoading, user, updateStats]);
 
   return {
     entries,
     globalRoutines,
-    isLoaded: !isUserLoading && !isEntriesLoading && !isRoutinesLoading,
+    stats,
+    isLoaded: !isUserLoading && !isEntriesLoading && !isRoutinesLoading && !isStatsLoading,
     user,
     getEntry,
     updateEntry,

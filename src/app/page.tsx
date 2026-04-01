@@ -3,11 +3,11 @@
 
 import React, { useState, Suspense, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, parse } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { JournalContainer } from '@/components/journal/journal-container';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings, LogOut, BarChart3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings, LogOut, BarChart3, Heart, Star, Award } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { MOODS } from '@/lib/types';
@@ -18,7 +18,7 @@ import { signOut } from 'firebase/auth';
 function Dashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { entries, isLoaded, getStreak, getEntry, updateEntry, user } = useJournalStore();
+  const { entries, isLoaded, getStreak, getEntry, updateEntry, user, stats } = useJournalStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const auth = useAuth();
 
@@ -66,21 +66,42 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-[#FCFAFA] flex flex-col pb-24">
       {/* Header */}
-      <header className="px-6 pt-12 pb-8 flex justify-between items-center bg-[#F2E6DA] rounded-b-[2.5rem] shadow-sm mb-8 border-b border-stone-200/50">
-        <div>
-          <h1 className="text-4xl font-headline text-[#4A3F35]">BT Journal</h1>
-          <p className="text-muted-foreground font-body italic">Creative mindful journey</p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="bg-white/90 backdrop-blur-sm p-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-secondary-foreground" />
-            <span className="font-headline text-lg">{streak} Day Streak</span>
+      <header className="px-6 pt-12 pb-8 flex flex-col gap-4 bg-[#F2E6DA] rounded-b-[2.5rem] shadow-sm mb-8 border-b border-stone-200/50">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-headline text-[#4A3F35]">BT Journal</h1>
+            <p className="text-muted-foreground font-body italic">Creative mindful journey</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => signOut(auth)} className="text-muted-foreground hover:text-red-400 h-8">
-            <LogOut className="w-4 h-4 mr-1" />
-            Sign Out
-          </Button>
+          <div className="flex flex-col items-end gap-2">
+            <div className="bg-white/90 backdrop-blur-sm p-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-secondary-foreground" />
+              <span className="font-headline text-lg">{streak} Day Streak</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => signOut(auth)} className="text-muted-foreground hover:text-red-400 h-8">
+              <LogOut className="w-4 h-4 mr-1" />
+              Sign Out
+            </Button>
+          </div>
         </div>
+
+        {/* Reward Summary */}
+        <Link href="/rewards" className="flex items-center gap-4 bg-white/40 backdrop-blur-md p-4 rounded-[2rem] border border-white/40 shadow-inner group">
+          <div className="flex items-center gap-2">
+            <div className="bg-red-50 p-2 rounded-full"><Heart className="w-4 h-4 text-red-400" /></div>
+            <span className="font-headline text-[#4A3F35]">{stats.hearts}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="bg-amber-50 p-2 rounded-full"><Star className="w-4 h-4 text-amber-500" /></div>
+            <span className="font-headline text-[#4A3F35]">{stats.stars}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="bg-emerald-50 p-2 rounded-full"><Award className="w-4 h-4 text-emerald-500" /></div>
+            <span className="font-headline text-[#4A3F35]">{stats.petals}</span>
+          </div>
+          <div className="ml-auto text-[10px] font-headline uppercase tracking-widest text-muted-foreground group-hover:text-primary-foreground transition-colors">
+            View Collection →
+          </div>
+        </Link>
       </header>
 
       {/* Calendar Section */}
@@ -200,6 +221,9 @@ function Dashboard() {
         </Link>
         <Link href="/stats" className="text-muted-foreground hover:text-primary-foreground transition-colors">
           <TrendingUp className="w-6 h-6" />
+        </Link>
+        <Link href="/rewards" className="text-muted-foreground hover:text-primary-foreground transition-colors">
+          <Award className="w-6 h-6" />
         </Link>
         <Link href="/settings" className="text-muted-foreground hover:text-primary-foreground transition-colors">
           <Settings className="w-6 h-6" />

@@ -50,6 +50,15 @@
           "items": {
             "$ref": "#/backend/entities/Sticker"
           }
+        },
+        "rewardsClaimed": {
+          "type": "object",
+          "properties": {
+            "habit50": { "type": "boolean" },
+            "habit100": { "type": "boolean" },
+            "journalAny": { "type": "boolean" },
+            "journalAll": { "type": "boolean" }
+          }
         }
       },
       "required": ["userId", "date"]
@@ -107,6 +116,19 @@
           }
         }
       }
+    },
+    "UserStats": {
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "hearts": { "type": "number" },
+        "stars": { "type": "number" },
+        "petals": { "type": "number" },
+        "badges": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
     }
   },
   "auth": {
@@ -128,6 +150,10 @@
     "/users/{userId}/settings/routines": {
       "schema": "#/backend/entities/RoutineList",
       "description": "Global routine items that appear on all days."
+    },
+    "/users/{userId}/settings/stats": {
+      "schema": "#/backend/entities/UserStats",
+      "description": "Historical reward collection and badges for the user."
     }
   }
 }

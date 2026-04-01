@@ -1,3 +1,4 @@
+
 export type ChecklistItem = {
   id: string;
   label: string;
@@ -17,6 +18,13 @@ export type Sticker = {
   scale: number;
 };
 
+export type DailyRewardsClaimed = {
+  habit50?: boolean;
+  habit100?: boolean;
+  journalAny?: boolean;
+  journalAll?: boolean;
+};
+
 export type JournalEntry = {
   date: string; // YYYY-MM-DD
   checklist: ChecklistItem[];
@@ -33,6 +41,7 @@ export type JournalEntry = {
   freeWriting: string;
   drawingData?: string; // Data URL for the canvas
   stickers?: Sticker[];
+  rewardsClaimed?: DailyRewardsClaimed;
 };
 
 export type Goal = {
@@ -40,6 +49,23 @@ export type Goal = {
   text: string;
   completed: boolean;
 };
+
+export type UserStats = {
+  userId: string;
+  hearts: number; // From habits
+  stars: number;  // From journaling
+  petals: number; // From goals & streaks
+  badges: string[];
+};
+
+export const BADGES = [
+  { id: 'perfect-day', title: 'Perfect Day', description: 'Complete 100% of habits and all journal sections in one day.', icon: '🌈' },
+  { id: 'streak-3', title: 'Seedling', description: 'Maintain a 3-day consistency streak.', icon: '🌱' },
+  { id: 'streak-7', title: '7-Day Bloom', description: 'Maintain a 7-day consistency streak.', icon: '🌸' },
+  { id: 'streak-30', title: 'Radiant Life', description: 'Maintain a 30-day consistency streak.', icon: '☀️' },
+  { id: 'monthly-achiever', title: 'Monthly Visionary', description: 'Complete all goals for a specific month.', icon: '🏆' },
+  { id: 'yearly-dreamer', title: 'Yearly Dreamer', description: 'Complete your first yearly vision goal.', icon: '✨' },
+];
 
 export const DEFAULT_HABIT_GROUPS = [
   {

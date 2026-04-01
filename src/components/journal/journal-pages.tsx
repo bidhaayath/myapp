@@ -77,7 +77,7 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
   }, [entry.checklist]);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 pb-32 pt-8">
+    <div className="flex flex-col h-full overflow-y-auto px-4 pb-32 pt-8 bg-stone-100/40">
       <PageHeader 
         date={entry.date} 
         title="Daily Checklist" 
@@ -99,7 +99,7 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
       </div>
 
       {showRoutineManager && (
-        <div className="bg-stone-100/50 p-4 rounded-3xl mb-8 space-y-3 border border-stone-200/50 animate-in fade-in slide-in-from-top-2">
+        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-3xl mb-8 space-y-3 border border-stone-200/50 animate-in fade-in slide-in-from-top-2">
           <p className="text-[10px] text-muted-foreground font-body italic mb-2">Custom routines added here appear on all days.</p>
           {globalRoutines.map(r => (
             <div key={r.id} className="flex items-center gap-2">

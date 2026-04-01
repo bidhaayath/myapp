@@ -333,14 +333,14 @@ function StatisticsContent() {
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {activeHabitLabels.map((habit) => (
-            <Card key={habit} className="p-4 rounded-[1.5rem] border-none shadow-sm bg-[#F2EDE9] overflow-hidden flex flex-col h-44">
+            <Card key={habit} className="p-4 rounded-[1.5rem] border-none shadow-sm bg-[#F2EDE9] overflow-hidden flex flex-col h-36">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="text-sm font-headline text-[#4A3F35] leading-tight flex-1 pr-2">{habit}</h3>
                 <div className="text-[10px] font-headline text-primary-foreground bg-primary/40 px-2 py-0.5 rounded-full">
                   {habitCounts[habit]} Done
                 </div>
               </div>
-              <div className="flex-1 w-full my-2">
+              <div className="flex-1 w-full my-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={timeFrameStats}>
                     <YAxis hide />

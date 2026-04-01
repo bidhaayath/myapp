@@ -7,7 +7,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMont
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { JournalContainer } from '@/components/journal/journal-container';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings, LogOut, BarChart3, Heart, Star, Award, Flower, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings, LogOut, BarChart3, Heart, Star, Flower, Info } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
@@ -126,7 +126,7 @@ function Dashboard() {
                       </PopoverTrigger>
                       <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
                          <p className="text-xs font-body text-stone-600 leading-relaxed">
-                            <span className="font-headline text-red-400">Hearts</span> are earned by completing more than <span className="font-bold text-stone-800">50%</span> of your daily habits each day.
+                            <span className="font-headline text-red-400">Hearts</span> are earned by completing <span className="font-bold text-stone-800">50% or more</span> of your daily habits each day.
                          </p>
                       </PopoverContent>
                    </Popover>

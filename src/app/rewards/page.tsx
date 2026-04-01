@@ -45,7 +45,7 @@ export default function RewardsPage() {
               </PopoverTrigger>
               <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
                 <p className="text-xs font-body text-stone-600 leading-relaxed">
-                  <span className="font-headline text-red-400">Hearts</span> are earned by completing more than <span className="font-bold text-stone-800">50%</span> of your daily habits each day.
+                  <span className="font-headline text-red-400">Hearts</span> are earned by completing <span className="font-bold text-stone-800">50% or more</span> of your daily habits each day.
                 </p>
               </PopoverContent>
             </Popover>

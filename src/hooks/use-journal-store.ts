@@ -114,12 +114,12 @@ export function useJournalStore() {
     let starsToAdd = 0;
     const newBadges: string[] = [...stats.badges];
 
-    // 1. Habit Reward: > 50% completed
+    // 1. Habit Reward: 50% or more completed
     const totalHabits = newEntry.checklist.length + newEntry.customChecklist.length;
     const completedHabits = newEntry.checklist.filter(i => i.checked).length + newEntry.customChecklist.filter(i => i.checked).length;
     const habitPercent = totalHabits > 0 ? (completedHabits / totalHabits) : 0;
 
-    if (habitPercent > 0.5 && !rewards.habitReward) {
+    if (habitPercent >= 0.5 && !rewards.habitReward) {
       rewards.habitReward = true;
       heartsToAdd += 1;
     }
@@ -139,7 +139,7 @@ export function useJournalStore() {
       starsToAdd += 1;
     }
 
-    // 3. Perfect Day Badge (Optional extra)
+    // 3. Perfect Day Badge
     const hasAllReflection = !!(newEntry.reflectionPositive.grateful && newEntry.reflectionPositive.learned && newEntry.reflectionGrowth.drained && newEntry.reflectionGrowth.improve);
     if (habitPercent >= 1.0 && hasAllReflection && !newBadges.includes('perfect-day')) {
       newBadges.push('perfect-day');
@@ -233,10 +233,7 @@ export function useJournalStore() {
     let petalsToAdd = 0;
 
     // Milestone logic: Reward Petals every 3 days of a streak
-    // Using a more dynamic approach or specific badges as requested
     if (streak > 0 && streak % 3 === 0) {
-      // We need to track if streakReward was already granted for this specific milestone
-      // For simplicity in this logic, we use badges to avoid multiple triggers
       const milestoneId = `streak-milestone-${streak}`;
       if (!newBadges.includes(milestoneId)) {
         newBadges.push(milestoneId);

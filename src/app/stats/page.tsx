@@ -159,20 +159,20 @@ export default function StatisticsPage() {
 
       {/* Core Stats Overview */}
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-primary/20 text-center">
+        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-primary/30 text-center">
           <Calendar className="w-6 h-6 mx-auto mb-2 text-primary-foreground" />
           <p className="text-2xl font-headline text-primary-foreground">{totalDays}</p>
-          <p className="text-[10px] uppercase tracking-widest text-primary-foreground/60 font-headline">Journal Days</p>
+          <p className="text-[10px] uppercase tracking-widest text-primary-foreground/70 font-headline">Journal Days</p>
         </Card>
-        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-secondary/20 text-center">
+        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-secondary/30 text-center">
           <Award className="w-6 h-6 mx-auto mb-2 text-secondary-foreground" />
           <p className="text-2xl font-headline text-secondary-foreground">{streak}</p>
-          <p className="text-[10px] uppercase tracking-widest text-secondary-foreground/60 font-headline">Current Streak</p>
+          <p className="text-[10px] uppercase tracking-widest text-secondary-foreground/70 font-headline">Current Streak</p>
         </Card>
       </div>
 
       {/* Total Habit Progress Chart */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5EBE0] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <TrendingUp className="w-6 h-6 text-primary-foreground" />
           <h2 className="text-xl font-headline text-[#4A3F35]">Habit Momentum</h2>
@@ -180,18 +180,18 @@ export default function StatisticsPage() {
         <div className="h-48 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={monthStats}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0d5c9" />
               <XAxis 
                 dataKey="dayNum" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{fontSize: 10, fill: '#A0A0A0'}} 
+                tick={{fontSize: 10, fill: '#8D7B6D'}} 
                 interval={4}
               />
               <YAxis hide domain={[0, 100]} />
               <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                labelStyle={{ fontWeight: 'bold' }}
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', backgroundColor: '#fff' }}
+                labelStyle={{ fontWeight: 'bold', color: '#4A3F35' }}
                 formatter={(value: number) => [`${Math.round(value)}%`, 'Completion']}
               />
               <Line 
@@ -205,20 +205,20 @@ export default function StatisticsPage() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <p className="text-xs text-center text-muted-foreground mt-4 font-body">
+        <p className="text-xs text-center text-stone-500 mt-4 font-body">
           Daily overall checklist completion for {format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'MMMM yyyy')}
         </p>
       </Card>
 
       {/* Monthly Goals Insights */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F9F1E7] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <Target className="w-6 h-6 text-secondary-foreground" />
           <h2 className="text-xl font-headline text-[#4A3F35]">Monthly Intentions</h2>
         </div>
 
         <div className="space-y-6">
-          <div className="flex flex-col items-center justify-center p-6 bg-secondary/15 rounded-[2rem] border border-secondary/20">
+          <div className="flex flex-col items-center justify-center p-6 bg-secondary/20 rounded-[2rem] border border-secondary/30">
             <div className="relative w-32 h-32 mb-4">
               <svg className="w-full h-full transform -rotate-90">
                 <circle
@@ -228,7 +228,7 @@ export default function StatisticsPage() {
                   stroke="currentColor"
                   strokeWidth="10"
                   fill="transparent"
-                  className="text-stone-200"
+                  className="text-stone-300"
                 />
                 <circle
                   cx="64"
@@ -240,7 +240,7 @@ export default function StatisticsPage() {
                   strokeDasharray={364.4}
                   strokeDashoffset={364.4 - (364.4 * goalProgress) / 100}
                   strokeLinecap="round"
-                  className="text-secondary transition-all duration-1000"
+                  className="text-secondary-foreground transition-all duration-1000"
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
@@ -249,16 +249,16 @@ export default function StatisticsPage() {
             </div>
             <div className="text-center">
               <p className="text-lg font-headline text-[#4A3F35]">{totalGoals} Goals Set</p>
-              <p className="text-sm text-muted-foreground font-body">{completedGoals} Completed successfully</p>
+              <p className="text-sm text-stone-600 font-body">{completedGoals} Completed successfully</p>
             </div>
           </div>
           
           <div className="space-y-2">
-            <div className="flex justify-between text-[10px] font-headline uppercase tracking-widest text-muted-foreground px-1">
+            <div className="flex justify-between text-[10px] font-headline uppercase tracking-widest text-stone-500 px-1">
               <span>Goal Progress</span>
               <span>{completedGoals} / {totalGoals}</span>
             </div>
-            <Progress value={goalProgress} className="h-2 bg-stone-100" />
+            <Progress value={goalProgress} className="h-2 bg-stone-200" />
           </div>
         </div>
       </Card>
@@ -272,10 +272,10 @@ export default function StatisticsPage() {
         
         <div className="grid grid-cols-1 gap-6">
           {DEFAULT_CHECKLIST_ITEMS.map((habit) => (
-            <Card key={habit} className="p-6 rounded-[2rem] border-none shadow-sm bg-white overflow-hidden">
+            <Card key={habit} className="p-6 rounded-[2rem] border-none shadow-sm bg-[#F5F5F5] overflow-hidden">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-headline text-[#4A3F35]">{habit}</h3>
-                <div className="text-[10px] uppercase tracking-widest text-primary-foreground font-headline bg-primary/20 px-3 py-1 rounded-full">
+                <div className="text-[10px] uppercase tracking-widest text-primary-foreground font-headline bg-primary/30 px-3 py-1 rounded-full">
                   Monthly View
                 </div>
               </div>
@@ -290,10 +290,10 @@ export default function StatisticsPage() {
                     <Line 
                       type="stepAfter" 
                       dataKey={habit} 
-                      stroke="#E6D8CE" 
+                      stroke="#C8B8AC" 
                       strokeWidth={2} 
                       dot={false}
-                      fill="#E6D8CE"
+                      fill="#C8B8AC"
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -305,7 +305,7 @@ export default function StatisticsPage() {
 
       {/* Yearly Vision Stats */}
       {allYearlyGoals && allYearlyGoals.length > 0 && (
-        <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
+        <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#ECE4DC] mb-8">
           <div className="flex items-center gap-3 mb-6">
             <Star className="w-6 h-6 text-primary-foreground" />
             <h2 className="text-xl font-headline text-[#4A3F35]">Yearly Vision</h2>
@@ -320,10 +320,10 @@ export default function StatisticsPage() {
                 <div key={yearDoc.id} className="space-y-3">
                   <div className="flex justify-between items-baseline">
                     <span className="text-lg font-headline text-[#4A3F35]">{yearDoc.id} Growth</span>
-                    <span className="text-xs text-muted-foreground">{completed}/{total} Achieved</span>
+                    <span className="text-xs text-stone-600">{completed}/{total} Achieved</span>
                   </div>
-                  <Progress value={progress} className="h-2 bg-stone-100" />
-                  <p className="text-xs text-muted-foreground italic font-body">
+                  <Progress value={progress} className="h-2 bg-stone-300" />
+                  <p className="text-xs text-stone-500 italic font-body">
                     {progress === 100 ? "Amazing! You've reached your vision." : `${Math.round(progress)}% of your yearly intentions completed.`}
                   </p>
                 </div>
@@ -334,7 +334,7 @@ export default function StatisticsPage() {
       )}
 
       {/* Mood Distribution */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8 overflow-hidden">
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5EBE0] mb-8 overflow-hidden">
         <div className="flex items-center gap-3 mb-6">
           <Smile className="w-6 h-6 text-primary-foreground" />
           <h2 className="text-xl font-headline text-[#4A3F35]">Mood Landscape</h2>
@@ -360,7 +360,7 @@ export default function StatisticsPage() {
               </RePieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center italic text-muted-foreground font-body">Log your moods to see insights</div>
+            <div className="h-full flex items-center justify-center italic text-stone-500 font-body">Log your moods to see insights</div>
           )}
         </div>
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 mt-4">
@@ -370,7 +370,7 @@ export default function StatisticsPage() {
                 <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: m.color }} />
                 {m.name}
               </span>
-              <span className="text-muted-foreground font-headline">{totalDays > 0 ? Math.round((m.value/totalDays)*100) : 0}%</span>
+              <span className="text-stone-600 font-headline">{totalDays > 0 ? Math.round((m.value/totalDays)*100) : 0}%</span>
             </div>
           ))}
         </div>

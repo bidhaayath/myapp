@@ -1,4 +1,3 @@
-
 export type ChecklistItem = {
   id: string;
   label: string;
@@ -53,7 +52,7 @@ export const DEFAULT_HABIT_GROUPS = [
   },
   {
     category: "Personal Care",
-    items: ["Reendho facial", "Comb hair", "Spray rosemary water on hair", "Moringa tablet", "Vitamin D tablet"]
+    items: ["Reendho facial", "Comb hair", "Spray rosemary water on hair", "Moringa tablet", "Vitamin D tablet", "❤️"]
   },
   {
     category: "Home Care",

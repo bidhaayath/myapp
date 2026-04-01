@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit2, Pencil, Type, Sticker as StickerIcon, Eraser, Settings2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Pencil, Type, Sticker as StickerIcon, Eraser, Settings2, Heart } from 'lucide-react';
 import { DrawingCanvas } from './drawing-canvas';
 import { StickerLayer } from './sticker-layer';
 import { useJournalStore } from '@/hooks/use-journal-store';
@@ -157,7 +157,9 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
               >
                 <Checkbox checked={item.checked} className="w-6 h-6 rounded-lg border-[#E6D8CE]" />
                 <Label className={cn("flex-1 text-lg font-body", item.checked && "line-through")}>
-                  {item.label}
+                  {item.label === '❤️' ? (
+                    <Heart className={cn("w-6 h-6 text-secondary-foreground", item.checked && "fill-current opacity-50")} />
+                  ) : item.label}
                 </Label>
               </div>
             ))}

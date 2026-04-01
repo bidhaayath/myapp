@@ -108,55 +108,51 @@ export function useJournalStore() {
     const currentEntry = getEntry(date);
     const newEntry = { ...currentEntry, ...updates };
     
-    // Reward Logic
+    // Updated Reward Logic
     const rewards = { ...newEntry.rewardsClaimed };
     let heartsToAdd = 0;
     let starsToAdd = 0;
-    let petalsToAdd = 0;
     const newBadges: string[] = [...stats.badges];
 
-    // 1. Habit Rewards
+    // 1. Habit Reward: > 50% completed
     const totalHabits = newEntry.checklist.length + newEntry.customChecklist.length;
     const completedHabits = newEntry.checklist.filter(i => i.checked).length + newEntry.customChecklist.filter(i => i.checked).length;
     const habitPercent = totalHabits > 0 ? (completedHabits / totalHabits) : 0;
 
-    if (habitPercent >= 0.5 && !rewards.habit50) {
-      rewards.habit50 = true;
+    if (habitPercent > 0.5 && !rewards.habitReward) {
+      rewards.habitReward = true;
       heartsToAdd += 1;
     }
-    if (habitPercent >= 1.0 && !rewards.habit100) {
-      rewards.habit100 = true;
-      heartsToAdd += 2;
-    }
 
-    // 2. Journaling Rewards
-    const hasAnyReflection = !!(newEntry.reflectionPositive.grateful || newEntry.reflectionPositive.learned || newEntry.reflectionGrowth.drained || newEntry.reflectionGrowth.improve || newEntry.freeWriting);
-    if (hasAnyReflection && !rewards.journalAny) {
-      rewards.journalAny = true;
+    // 2. Journaling Reward: > 2 sections filled
+    const journalSections = [
+      newEntry.reflectionPositive.grateful,
+      newEntry.reflectionPositive.learned,
+      newEntry.reflectionGrowth.drained,
+      newEntry.reflectionGrowth.improve,
+      newEntry.freeWriting
+    ];
+    const sectionsFilled = journalSections.filter(s => s.trim().length > 0).length;
+
+    if (sectionsFilled > 2 && !rewards.journalReward) {
+      rewards.journalReward = true;
       starsToAdd += 1;
     }
 
+    // 3. Perfect Day Badge (Optional extra)
     const hasAllReflection = !!(newEntry.reflectionPositive.grateful && newEntry.reflectionPositive.learned && newEntry.reflectionGrowth.drained && newEntry.reflectionGrowth.improve);
-    if (hasAllReflection && !rewards.journalAll) {
-      rewards.journalAll = true;
-      starsToAdd += 2;
-    }
-
-    // 3. Perfect Day Badge
     if (habitPercent >= 1.0 && hasAllReflection && !newBadges.includes('perfect-day')) {
       newBadges.push('perfect-day');
-      petalsToAdd += 10;
     }
 
     // Apply updates
     const finalData = { ...newEntry, rewardsClaimed: rewards, userId: user.uid, date };
     setDocumentNonBlocking(ref, finalData, { merge: true });
 
-    if (heartsToAdd > 0 || starsToAdd > 0 || petalsToAdd > 0 || newBadges.length > stats.badges.length) {
+    if (heartsToAdd > 0 || starsToAdd > 0 || newBadges.length > stats.badges.length) {
       updateStats({
         hearts: stats.hearts + heartsToAdd,
         stars: stats.stars + starsToAdd,
-        petals: stats.petals + petalsToAdd,
         badges: newBadges
       });
     }
@@ -229,27 +225,36 @@ export function useJournalStore() {
     return streak;
   }, [entries]);
 
-  // Check for streak milestones
+  // Check for streak milestones (Petals)
   useMemo(() => {
     if (!user || isStatsLoading) return;
     const streak = getStreak();
     const newBadges = [...stats.badges];
     let petalsToAdd = 0;
 
+    // Milestone logic: Reward Petals every 3 days of a streak
+    // Using a more dynamic approach or specific badges as requested
+    if (streak > 0 && streak % 3 === 0) {
+      // We need to track if streakReward was already granted for this specific milestone
+      // For simplicity in this logic, we use badges to avoid multiple triggers
+      const milestoneId = `streak-milestone-${streak}`;
+      if (!newBadges.includes(milestoneId)) {
+        newBadges.push(milestoneId);
+        petalsToAdd += 5;
+      }
+    }
+
     if (streak >= 3 && !newBadges.includes('streak-3')) {
       newBadges.push('streak-3');
-      petalsToAdd += 5;
     }
     if (streak >= 7 && !newBadges.includes('streak-7')) {
       newBadges.push('streak-7');
-      petalsToAdd += 15;
     }
     if (streak >= 30 && !newBadges.includes('streak-30')) {
       newBadges.push('streak-30');
-      petalsToAdd += 50;
     }
 
-    if (newBadges.length > stats.badges.length) {
+    if (petalsToAdd > 0 || newBadges.length > stats.badges.length) {
       updateStats({ badges: newBadges, petals: stats.petals + petalsToAdd });
     }
   }, [getStreak, stats, isStatsLoading, user, updateStats]);

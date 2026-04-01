@@ -1,25 +1,30 @@
 
 "use client"
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, BarChart2, Calendar, Smile, Award, PieChart, CheckCircle2, TrendingUp, Target, Star, History } from 'lucide-react';
+import { ChevronLeft, Calendar, Smile, Award, CheckCircle2, Target, Star } from 'lucide-react';
 import { MOODS, DEFAULT_CHECKLIST_ITEMS, Goal } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
+import { format, parse } from 'date-fns';
 import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  PieChart as RePieChart, Pie, Cell, AreaChart, Area
+  Tooltip, ResponsiveContainer, 
+  PieChart as RePieChart, Pie, Cell
 } from 'recharts';
 
 export default function StatisticsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { entries, isLoaded, getStreak } = useJournalStore();
+
+  const currentMonthId = format(new Date(), 'yyyy-MM');
+  const [selectedMonthId, setSelectedMonthId] = useState(currentMonthId);
 
   // Fetch monthly goals collection
   const monthlyGoalsRef = useMemoFirebase(() => {
@@ -34,6 +39,21 @@ export default function StatisticsPage() {
     return collection(firestore, 'users', user.uid, 'yearlyGoals');
   }, [user, firestore]);
   const { data: allYearlyGoals } = useCollection<{ goals: Goal[] }>(yearlyGoalsRef);
+
+  const selectedMonthData = useMemo(() => {
+    if (!allMonthlyGoals) return null;
+    return allMonthlyGoals.find(m => m.id === selectedMonthId);
+  }, [allMonthlyGoals, selectedMonthId]);
+
+  const availableMonths = useMemo(() => {
+    if (!allMonthlyGoals) return [];
+    // Ensure current month is in the list even if no goals yet
+    const monthIds = allMonthlyGoals.map(m => m.id);
+    if (!monthIds.includes(currentMonthId)) {
+      monthIds.push(currentMonthId);
+    }
+    return monthIds.sort((a, b) => b.localeCompare(a));
+  }, [allMonthlyGoals, currentMonthId]);
 
   if (!isLoaded) return null;
 
@@ -61,6 +81,11 @@ export default function StatisticsPage() {
 
   const streak = getStreak();
 
+  const goals = selectedMonthData?.goals || [];
+  const completed = goals.filter(g => g.completed).length;
+  const total = goals.length;
+  const progress = total > 0 ? (completed / total) * 100 : 0;
+
   return (
     <div className="min-h-screen bg-[#FCFAFA] px-6 pt-12 pb-24">
       <header className="flex items-center justify-between mb-8">
@@ -87,6 +112,76 @@ export default function StatisticsPage() {
         </Card>
       </div>
 
+      {/* Monthly Goals Insights */}
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Target className="w-6 h-6 text-secondary-foreground" />
+            <h2 className="text-xl font-headline text-[#4A3F35]">Monthly Momentum</h2>
+          </div>
+          <Select value={selectedMonthId} onValueChange={setSelectedMonthId}>
+            <SelectTrigger className="w-[140px] h-8 rounded-full border-stone-100 bg-stone-50/50 text-xs font-headline">
+              <SelectValue placeholder="Select month" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl border-stone-100">
+              {availableMonths.map(monthId => {
+                const date = parse(monthId, 'yyyy-MM', new Date());
+                return (
+                  <SelectItem key={monthId} value={monthId} className="text-xs font-body">
+                    {format(date, 'MMMM yyyy')}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-6">
+          <div className="flex flex-col items-center justify-center p-6 bg-secondary/5 rounded-[2rem] border border-secondary/10">
+            <div className="relative w-32 h-32 mb-4">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle
+                  cx="64"
+                  cy="64"
+                  r="58"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="transparent"
+                  className="text-stone-100"
+                />
+                <circle
+                  cx="64"
+                  cy="64"
+                  r="58"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="transparent"
+                  strokeDasharray={364.4}
+                  strokeDashoffset={364.4 - (364.4 * progress) / 100}
+                  strokeLinecap="round"
+                  className="text-secondary transition-all duration-1000"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-3xl font-headline text-secondary-foreground">{Math.round(progress)}%</span>
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-headline text-[#4A3F35]">{total} Goals Set</p>
+              <p className="text-sm text-muted-foreground font-body">{completed} Completed successfully</p>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-[10px] font-headline uppercase tracking-widest text-muted-foreground px-1">
+              <span>Goal Progress</span>
+              <span>{completed} / {total}</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+        </div>
+      </Card>
+
       {/* Yearly Vision Stats */}
       {allYearlyGoals && allYearlyGoals.length > 0 && (
         <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
@@ -110,50 +205,6 @@ export default function StatisticsPage() {
                   <p className="text-xs text-muted-foreground italic font-body">
                     {progress === 100 ? "Amazing! You've reached your vision." : `${Math.round(progress)}% of your yearly intentions completed.`}
                   </p>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
-
-      {/* Monthly Goals Breakdown */}
-      {allMonthlyGoals && allMonthlyGoals.length > 0 && (
-        <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
-          <div className="flex items-center gap-3 mb-6">
-            <Target className="w-6 h-6 text-secondary-foreground" />
-            <h2 className="text-xl font-headline text-[#4A3F35]">Monthly Momentum</h2>
-          </div>
-          <div className="space-y-8">
-            {[...allMonthlyGoals].reverse().map((monthDoc) => {
-              const goals = monthDoc.goals || [];
-              const completed = goals.filter(g => g.completed).length;
-              const total = goals.length;
-              const progress = total > 0 ? (completed / total) * 100 : 0;
-              
-              // Format monthId (YYYY-MM) to readable month
-              const [year, month] = monthDoc.id.split('-');
-              const date = new Date(parseInt(year), parseInt(month) - 1);
-              const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-
-              return (
-                <div key={monthDoc.id} className="group">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-headline text-stone-600">{monthName}</span>
-                    <span className="text-xs font-body font-medium text-secondary-foreground bg-secondary/20 px-2 py-0.5 rounded-full">
-                      {Math.round(progress)}% Done
-                    </span>
-                  </div>
-                  <div className="relative h-1.5 w-full bg-stone-50 rounded-full overflow-hidden">
-                    <div 
-                      className="absolute inset-y-0 left-0 bg-secondary transition-all duration-1000" 
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between mt-1">
-                     <span className="text-[10px] text-stone-400 font-body">{total} Goals set</span>
-                     <span className="text-[10px] text-stone-400 font-body">{completed} Completed</span>
-                  </div>
                 </div>
               );
             })}
@@ -188,7 +239,7 @@ export default function StatisticsPage() {
               </RePieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center italic text-muted-foreground">Log your moods to see insights</div>
+            <div className="h-full flex items-center justify-center italic text-muted-foreground font-body">Log your moods to see insights</div>
           )}
         </div>
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 mt-4">
@@ -211,7 +262,7 @@ export default function StatisticsPage() {
           <h2 className="text-xl font-headline text-[#4A3F35]">Habit Progress</h2>
         </div>
         <div className="space-y-6">
-          {habitStats.slice(0, 8).map((habit) => (
+          {habitStats.slice(0, 10).map((habit) => (
             <div key={habit.label} className="space-y-2">
               <div className="flex justify-between items-baseline">
                 <span className="text-sm font-body text-stone-700">{habit.label}</span>

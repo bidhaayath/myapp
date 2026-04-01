@@ -7,7 +7,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMont
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { JournalContainer } from '@/components/journal/journal-container';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings, LogOut, BarChart3, Heart, Star, Award } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings, LogOut, BarChart3, Heart, Star, Award, Flower } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { MOODS } from '@/lib/types';
@@ -95,7 +95,7 @@ function Dashboard() {
             <span className="font-headline text-[#4A3F35]">{stats.stars}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="bg-emerald-50 p-2 rounded-full"><Award className="w-4 h-4 text-emerald-500" /></div>
+            <div className="bg-emerald-50 p-2 rounded-full"><Flower className="w-4 h-4 text-emerald-500" /></div>
             <span className="font-headline text-[#4A3F35]">{stats.petals}</span>
           </div>
           <div className="ml-auto text-[10px] font-headline uppercase tracking-widest text-muted-foreground group-hover:text-primary-foreground transition-colors">

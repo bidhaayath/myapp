@@ -4,7 +4,7 @@
 import React from 'react';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Heart, Star, Award, Sparkles, Trophy } from 'lucide-react';
+import { ChevronLeft, Heart, Star, Award, Sparkles, Trophy, Flower } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BADGES } from '@/lib/types';
@@ -52,7 +52,7 @@ export default function RewardsPage() {
 
         <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-emerald-50 text-center flex flex-col items-center">
           <div className="bg-white p-2 rounded-full mb-2 shadow-sm animate-float [animation-delay:0.4s]">
-            <Award className="w-6 h-6 text-emerald-500 fill-current" />
+            <Flower className="w-6 h-6 text-emerald-500 fill-current" />
           </div>
           <span className="text-2xl font-headline text-emerald-700">{stats.petals}</span>
           <p className="text-[10px] uppercase tracking-widest text-emerald-500 font-headline">Petals</p>

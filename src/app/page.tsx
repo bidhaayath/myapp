@@ -126,7 +126,7 @@ function Dashboard() {
                       </PopoverTrigger>
                       <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
                          <p className="text-xs font-body text-stone-600 leading-relaxed">
-                            <span className="font-headline text-red-400">Hearts</span> are earned by completing more than <span className="font-bold text-stone-800">50%</span> of your daily habits.
+                            <span className="font-headline text-red-400">Hearts</span> are earned by completing more than <span className="font-bold text-stone-800">50%</span> of your daily habits each day.
                          </p>
                       </PopoverContent>
                    </Popover>
@@ -144,7 +144,7 @@ function Dashboard() {
                       </PopoverTrigger>
                       <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
                          <p className="text-xs font-body text-stone-600 leading-relaxed">
-                            <span className="font-headline text-amber-500">Stars</span> are earned when you write in more than <span className="font-bold text-stone-800">2</span> journal sections.
+                            <span className="font-headline text-amber-500">Stars</span> are earned when you write in more than <span className="font-bold text-stone-800">2</span> journal sections each day.
                          </p>
                       </PopoverContent>
                    </Popover>
@@ -162,7 +162,7 @@ function Dashboard() {
                       </PopoverTrigger>
                       <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
                          <p className="text-xs font-body text-stone-600 leading-relaxed">
-                            <span className="font-headline text-emerald-500">Petals</span> are earned every time you maintain a <span className="font-bold text-stone-800">3-day</span> continuous streak.
+                            <span className="font-headline text-emerald-500">Petals</span> are earned every time you maintain a continuous <span className="font-bold text-stone-800">3-day</span> streak.
                          </p>
                       </PopoverContent>
                    </Popover>

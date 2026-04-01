@@ -375,7 +375,7 @@ export function PageFreeWriting({ entry, onUpdate }: PageProps) {
             onChange={(e) => onUpdate({ freeWriting: e.target.value })}
             placeholder="Let your thoughts flow like a gentle stream..."
             className={cn(
-              "absolute inset-0 z-0 flex-1 min-h-[400px] resize-none bg-stone-50/50 border-none focus-visible:ring-1 focus-visible:ring-primary rounded-2xl text-lg leading-relaxed shadow-inner p-6 transition-opacity",
+              "absolute inset-0 z-0 flex-1 min-h-[400px] resize-none bg-stone-100/60 border-none focus-visible:ring-1 focus-visible:ring-primary rounded-2xl text-lg leading-relaxed shadow-inner p-6 transition-opacity",
               mode !== 'write' && "opacity-30 pointer-events-none"
             )}
           />

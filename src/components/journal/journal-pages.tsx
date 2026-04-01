@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState } from 'react';
@@ -10,9 +11,10 @@ import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Edit2, Pencil, Type, Sticker as StickerIcon, Eraser } from 'lucide-react';
+import { Plus, Trash2, Edit2, Pencil, Type, Sticker as StickerIcon, Eraser, Settings2 } from 'lucide-react';
 import { DrawingCanvas } from './drawing-canvas';
 import { StickerLayer } from './sticker-layer';
+import { useJournalStore } from '@/hooks/use-journal-store';
 
 interface PageProps {
   entry: JournalEntry;
@@ -20,25 +22,28 @@ interface PageProps {
 }
 
 export function PageChecklist({ entry, onUpdate }: PageProps) {
+  const { globalRoutines, addGlobalRoutine, deleteGlobalRoutine, editGlobalRoutine } = useJournalStore();
   const [newItemText, setNewItemText] = useState('');
+  const [newRoutineText, setNewRoutineText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
+  const [showRoutineManager, setShowRoutineManager] = useState(false);
   
-  const allItems = [...entry.checklist, ...entry.customChecklist];
-  const completedCount = allItems.filter(i => i.checked).length;
-  const totalCount = allItems.length;
+  const completedCount = entry.checklist.filter(i => i.checked).length + entry.customChecklist.filter(i => i.checked).length;
+  const totalCount = entry.checklist.length + entry.customChecklist.length;
 
-  const toggleItem = (id: string, isCustom: boolean) => {
-    if (isCustom) {
-      const newList = entry.customChecklist.map(item => 
-        item.id === id ? { ...item, checked: !item.checked } : item
-      );
-      onUpdate({ customChecklist: newList });
-    } else {
-      const newList = entry.checklist.map(item => 
-        item.id === id ? { ...item, checked: !item.checked } : item
-      );
-      onUpdate({ checklist: newList });
-    }
+  const toggleRoutine = (label: string) => {
+    const newList = entry.checklist.map(item => 
+      item.label === label ? { ...item, checked: !item.checked } : item
+    );
+    onUpdate({ checklist: newList });
+  };
+
+  const toggleCustomItem = (id: string) => {
+    const newList = entry.customChecklist.map(item => 
+      item.id === id ? { ...item, checked: !item.checked } : item
+    );
+    onUpdate({ customChecklist: newList });
   };
 
   const addCustomItem = () => {
@@ -52,15 +57,10 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
     setNewItemText('');
   };
 
-  const updateCustomItem = (id: string, text: string) => {
-    const newList = entry.customChecklist.map(item => 
-      item.id === id ? { ...item, label: text } : item
-    );
-    onUpdate({ customChecklist: newList });
-  };
-
-  const removeCustomItem = (id: string) => {
-    onUpdate({ customChecklist: entry.customChecklist.filter(i => i.id !== id) });
+  const handleAddRoutine = () => {
+    if (!newRoutineText.trim()) return;
+    addGlobalRoutine(newRoutineText);
+    setNewRoutineText('');
   };
 
   return (
@@ -71,16 +71,70 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
         progress={{ current: completedCount, total: totalCount }}
       />
       
+      {/* 1. Global Routines (The core habits) */}
       <div className="space-y-3 mb-8">
-        <h3 className="text-sm font-headline uppercase tracking-widest text-muted-foreground ml-2">Routine</h3>
+        <div className="flex items-center justify-between ml-2 mb-2">
+          <h3 className="text-sm font-headline uppercase tracking-widest text-muted-foreground">Routines</h3>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowRoutineManager(!showRoutineManager)}
+            className="h-7 text-[10px] font-headline uppercase tracking-widest opacity-60 hover:opacity-100"
+          >
+            <Settings2 className="w-3 h-3 mr-1" />
+            {showRoutineManager ? "Hide Settings" : "Manage"}
+          </Button>
+        </div>
+
+        {showRoutineManager && (
+          <div className="bg-stone-100/50 p-4 rounded-3xl mb-4 space-y-3 border border-stone-200/50 animate-in fade-in slide-in-from-top-2">
+            <p className="text-[10px] text-muted-foreground font-body italic mb-2">Items added here appear on all days.</p>
+            {globalRoutines.map(r => (
+              <div key={r.id} className="flex items-center gap-2">
+                {editingRoutineId === r.id ? (
+                  <Input 
+                    autoFocus
+                    defaultValue={r.label}
+                    onBlur={(e) => {
+                      editGlobalRoutine(r.id, e.target.value);
+                      setEditingRoutineId(null);
+                    }}
+                    className="flex-1 h-8 text-xs rounded-lg"
+                  />
+                ) : (
+                  <span className="flex-1 text-sm font-body">{r.label}</span>
+                )}
+                <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => setEditingRoutineId(r.id)}>
+                  <Edit2 className="w-3 h-3" />
+                </Button>
+                <Button variant="ghost" size="icon" className="w-6 h-6 text-red-400" onClick={() => deleteGlobalRoutine(r.id)}>
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex gap-2 pt-2 border-t border-stone-200">
+               <Input 
+                value={newRoutineText}
+                onChange={(e) => setNewRoutineText(e.target.value)}
+                placeholder="New habit name..."
+                className="h-8 text-xs rounded-lg"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddRoutine()}
+               />
+               <Button onClick={handleAddRoutine} size="icon" className="h-8 w-8 rounded-lg">
+                 <Plus className="w-4 h-4" />
+               </Button>
+            </div>
+          </div>
+        )}
+
         {entry.checklist.map((item) => (
           <div 
-            key={item.id} 
+            key={item.label} 
             className={cn(
               "flex items-center space-x-4 p-4 rounded-2xl transition-all duration-200 cursor-pointer",
               item.checked ? "bg-primary/10 opacity-60" : "bg-white border border-stone-100/50 shadow-sm"
             )}
-            onClick={() => toggleItem(item.id, false)}
+            onClick={() => toggleRoutine(item.label)}
           >
             <Checkbox checked={item.checked} className="w-6 h-6 rounded-lg border-[#E6D8CE]" />
             <Label className={cn("flex-1 text-lg font-body", item.checked && "line-through")}>
@@ -90,6 +144,7 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
         ))}
       </div>
 
+      {/* 2. Custom (One-off) Items for today */}
       <div className="space-y-3 mb-8">
         <h3 className="text-sm font-headline uppercase tracking-widest text-muted-foreground ml-2">Extra Today</h3>
         {entry.customChecklist.map((item) => (
@@ -102,7 +157,7 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
           >
             <Checkbox 
               checked={item.checked} 
-              onCheckedChange={() => toggleItem(item.id, true)}
+              onCheckedChange={() => toggleCustomItem(item.id)}
               className="w-6 h-6 rounded-lg border-[#E6D8CE]" 
             />
             {editingId === item.id ? (
@@ -110,14 +165,15 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
                 autoFocus
                 defaultValue={item.label}
                 onBlur={(e) => {
-                  updateCustomItem(item.id, e.target.value);
+                  const newList = entry.customChecklist.map(i => i.id === item.id ? { ...i, label: e.target.value } : i);
+                  onUpdate({ customChecklist: newList });
                   setEditingId(null);
                 }}
                 className="flex-1 h-8 border-none p-0 focus-visible:ring-0"
               />
             ) : (
               <Label 
-                onClick={() => toggleItem(item.id, true)}
+                onClick={() => toggleCustomItem(item.id)}
                 className={cn("flex-1 text-lg font-body", item.checked && "line-through")}
               >
                 {item.label}
@@ -127,7 +183,9 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
               <Button variant="ghost" size="icon" onClick={() => setEditingId(item.id)} className="w-8 h-8 opacity-40 hover:opacity-100">
                 <Edit2 className="w-3 h-3" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)} className="w-8 h-8 opacity-40 hover:opacity-100">
+              <Button variant="ghost" size="icon" onClick={() => {
+                onUpdate({ customChecklist: entry.customChecklist.filter(i => i.id !== item.id) });
+              }} className="w-8 h-8 opacity-40 hover:opacity-100">
                 <Trash2 className="w-3 h-3 text-red-400" />
               </Button>
             </div>

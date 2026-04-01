@@ -3,32 +3,25 @@
 
 import { useMemo } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, DocumentReference, CollectionReference } from 'firebase/firestore';
-import { JournalEntry, ChecklistItem, DEFAULT_CHECKLIST_ITEMS, Goal, Sticker } from '@/lib/types';
+import { doc, collection } from 'firebase/firestore';
+import { JournalEntry, DEFAULT_CHECKLIST_ITEMS, Goal, Routine } from '@/lib/types';
 import { format, startOfMonth, subDays } from 'date-fns';
-import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export function useJournalStore() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  // Helper to get doc references
-  const getEntryRef = useMemoFirebase(() => {
+  // 1. Fetch Global Routines
+  const routinesRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return (date: string) => doc(firestore, 'users', user.uid, 'dailyEntries', date);
+    return doc(firestore, 'users', user.uid, 'settings', 'routines');
   }, [user, firestore]);
 
-  const getMonthlyRef = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return (month: string) => doc(firestore, 'users', user.uid, 'monthlyGoals', month);
-  }, [user, firestore]);
+  const { data: routinesData, isLoading: isRoutinesLoading } = useDoc<{ items: Routine[] }>(routinesRef);
+  const globalRoutines = useMemo(() => routinesData?.items || [], [routinesData]);
 
-  const getYearlyRef = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return (year: string) => doc(firestore, 'users', user.uid, 'yearlyGoals', year);
-  }, [user, firestore]);
-
-  // Current Entries (for the calendar/stats)
+  // 2. Fetch Daily Entries
   const entriesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return collection(firestore, 'users', user.uid, 'dailyEntries');
@@ -44,44 +37,92 @@ export function useJournalStore() {
     return record;
   }, [entriesData]);
 
+  // Helper to get doc references
+  const getEntryRef = (date: string) => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid, 'dailyEntries', date);
+  };
+
+  const getMonthlyRef = (month: string) => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid, 'monthlyGoals', month);
+  };
+
+  const getYearlyRef = (year: string) => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid, 'yearlyGoals', year);
+  };
+
+  // 3. Merged Entry Logic
+  // This combines Firestore entry state with the current global routine definition
   const getEntry = (date: string): JournalEntry => {
     const existing = entries[date];
-    if (existing) return existing;
+    
+    // The "Full List" of routine labels active TODAY
+    const routineLabels = [...DEFAULT_CHECKLIST_ITEMS, ...globalRoutines.map(r => r.label)];
+    
+    const baseChecklist = routineLabels.map((label, index) => {
+      const existingItem = existing?.checklist?.find(i => i.label === label);
+      return {
+        id: existingItem?.id || `routine-${index}`,
+        label,
+        checked: existingItem?.checked || false,
+      };
+    });
 
     return {
       date,
-      checklist: DEFAULT_CHECKLIST_ITEMS.map((label, index) => ({
-        id: `default-${index}`,
-        label,
-        checked: false,
-      })),
-      customChecklist: [],
-      reflectionPositive: { grateful: '', learned: '' },
-      reflectionGrowth: { drained: '', improve: '' },
-      mood: '',
-      freeWriting: '',
-      stickers: [],
+      checklist: baseChecklist,
+      customChecklist: existing?.customChecklist || [],
+      reflectionPositive: existing?.reflectionPositive || { grateful: '', learned: '' },
+      reflectionGrowth: existing?.reflectionGrowth || { drained: '', improve: '' },
+      mood: existing?.mood || '',
+      freeWriting: existing?.freeWriting || '',
+      stickers: existing?.stickers || [],
+      drawingData: existing?.drawingData || undefined,
     };
   };
 
   const updateEntry = (date: string, updates: Partial<JournalEntry>) => {
-    if (!user || !getEntryRef) return;
+    if (!user) return;
     const ref = getEntryRef(date);
+    if (!ref) return;
     const entry = getEntry(date);
     const finalData = { ...entry, ...updates, userId: user.uid, date };
     setDocumentNonBlocking(ref, finalData, { merge: true });
   };
 
+  // 4. Global Routine Management
+  const updateGlobalRoutines = (newRoutines: Routine[]) => {
+    if (!user || !routinesRef) return;
+    setDocumentNonBlocking(routinesRef, { userId: user.uid, items: newRoutines }, { merge: true });
+  };
+
+  const addGlobalRoutine = (label: string) => {
+    const newRoutine: Routine = { id: Date.now().toString(), label };
+    updateGlobalRoutines([...globalRoutines, newRoutine]);
+  };
+
+  const deleteGlobalRoutine = (id: string) => {
+    updateGlobalRoutines(globalRoutines.filter(r => r.id !== id));
+  };
+
+  const editGlobalRoutine = (id: string, newLabel: string) => {
+    updateGlobalRoutines(globalRoutines.map(r => r.id === id ? { ...r, label: newLabel } : r));
+  };
+
   const updateMonthlyGoals = (date: Date, goals: Goal[]) => {
-    if (!user || !getMonthlyRef) return;
+    if (!user) return;
     const monthId = format(startOfMonth(date), 'yyyy-MM');
     const ref = getMonthlyRef(monthId);
+    if (!ref) return;
     setDocumentNonBlocking(ref, { userId: user.uid, goals }, { merge: true });
   };
 
   const updateYearlyGoals = (year: string, goals: Goal[]) => {
-    if (!user || !getYearlyRef) return;
+    if (!user) return;
     const ref = getYearlyRef(year);
+    if (!ref) return;
     setDocumentNonBlocking(ref, { userId: user.uid, goals }, { merge: true });
   };
 
@@ -102,10 +143,14 @@ export function useJournalStore() {
 
   return {
     entries,
-    isLoaded: !isUserLoading && !isEntriesLoading,
+    globalRoutines,
+    isLoaded: !isUserLoading && !isEntriesLoading && !isRoutinesLoading,
     user,
     getEntry,
     updateEntry,
+    addGlobalRoutine,
+    deleteGlobalRoutine,
+    editGlobalRoutine,
     updateMonthlyGoals,
     updateYearlyGoals,
     getStreak,

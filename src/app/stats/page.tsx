@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { format, parse, startOfYear, addMonths, eachDayOfInterval, startOfMonth, endOfMonth, isSameYear, isSameMonth } from 'date-fns';
+import { format, parse, startOfYear, addMonths, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { 
   Tooltip, ResponsiveContainer, 
   PieChart as RePieChart, Pie, Cell,
@@ -25,7 +25,7 @@ function StatisticsContent() {
   const searchParams = useSearchParams();
   const { user } = useUser();
   const firestore = useFirestore();
-  const { entries, isLoaded, getStreak } = useJournalStore();
+  const { entries, isLoaded, getStreak, globalRoutines } = useJournalStore();
 
   const currentMonthId = format(new Date(), 'yyyy-MM');
   const monthFromQuery = searchParams.get('month');
@@ -38,6 +38,11 @@ function StatisticsContent() {
   }, [monthFromQuery]);
 
   const isYearlyView = !selectedMonthId.includes('-');
+
+  // Dynamic set of habits to track
+  const activeHabitLabels = useMemo(() => {
+    return [...DEFAULT_CHECKLIST_ITEMS, ...globalRoutines.map(r => r.label)];
+  }, [globalRoutines]);
 
   // Fetch monthly goals collection
   const monthlyGoalsRef = useMemoFirebase(() => {
@@ -77,13 +82,11 @@ function StatisticsContent() {
     const now = new Date();
     const currentYear = now.getFullYear();
     
-    // Add current and past year as "Full Year"
     for (let i = 0; i < 2; i++) {
       const year = currentYear - i;
       frames.push({ id: year.toString(), label: `Full Year ${year}`, type: 'year' });
     }
 
-    // Add all months of the current year
     const currentYearStart = startOfYear(now);
     for (let i = 0; i < 12; i++) {
       const date = addMonths(currentYearStart, i);
@@ -91,24 +94,12 @@ function StatisticsContent() {
       frames.push({ id, label: format(date, 'MMMM yyyy'), type: 'month' });
     }
 
-    // Add any extra months found in entries
-    Object.keys(entries).forEach(dateStr => {
-      const monthId = dateStr.substring(0, 7);
-      if (!frames.some(f => f.id === monthId)) {
-        try {
-          const date = parse(monthId, 'yyyy-MM', new Date());
-          frames.push({ id: monthId, label: format(date, 'MMMM yyyy'), type: 'month' });
-        } catch {}
-      }
-    });
-
     return frames.sort((a, b) => b.id.localeCompare(a.id));
-  }, [entries]);
+  }, []);
 
   // Data preparation for the selected timeframe
   const timeFrameStats = useMemo(() => {
     if (isYearlyView) {
-      // Aggregate by month for the year
       const year = parseInt(selectedMonthId);
       return Array.from({ length: 12 }, (_, i) => {
         const monthDate = addMonths(new Date(year, 0, 1), i);
@@ -123,14 +114,14 @@ function StatisticsContent() {
           if (entry.date.startsWith(monthId)) {
             daysWithEntriesCount++;
             let completedInDay = 0;
-            DEFAULT_CHECKLIST_ITEMS.forEach(label => {
+            activeHabitLabels.forEach(label => {
               const isDone = entry.checklist?.find(it => it.label === label)?.checked;
               if (isDone) {
                 habitData[label] = (habitData[label] || 0) + 1;
                 completedInDay++;
               }
             });
-            totalDailyRates += (completedInDay / DEFAULT_CHECKLIST_ITEMS.length) * 100;
+            totalDailyRates += (completedInDay / activeHabitLabels.length) * 100;
           }
         });
 
@@ -142,7 +133,6 @@ function StatisticsContent() {
         };
       });
     } else {
-      // Daily aggregate for the month
       const selectedDate = parse(selectedMonthId, 'yyyy-MM', new Date());
       const days = eachDayOfInterval({
         start: startOfMonth(selectedDate),
@@ -157,14 +147,14 @@ function StatisticsContent() {
         const habitData: Record<string, number> = {};
         let totalCompleted = 0;
 
-        DEFAULT_CHECKLIST_ITEMS.forEach(label => {
+        activeHabitLabels.forEach(label => {
           const isCompleted = entry?.checklist?.find(i => i.label === label)?.checked ? 1 : 0;
           habitData[label] = isCompleted;
           totalCompleted += isCompleted;
         });
 
-        const completionRate = DEFAULT_CHECKLIST_ITEMS.length > 0 
-          ? (totalCompleted / DEFAULT_CHECKLIST_ITEMS.length) * 100 
+        const completionRate = activeHabitLabels.length > 0 
+          ? (totalCompleted / activeHabitLabels.length) * 100 
           : 0;
 
         return {
@@ -175,23 +165,21 @@ function StatisticsContent() {
         };
       });
     }
-  }, [entries, selectedMonthId, isYearlyView]);
+  }, [entries, selectedMonthId, isYearlyView, activeHabitLabels]);
 
-  // Calculate total completions per habit for the timeframe
   const habitCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    DEFAULT_CHECKLIST_ITEMS.forEach(habit => {
+    activeHabitLabels.forEach(habit => {
       counts[habit] = timeFrameStats.reduce((sum, period) => sum + (period[habit] || 0), 0);
     });
     return counts;
-  }, [timeFrameStats]);
+  }, [timeFrameStats, activeHabitLabels]);
 
   if (!isLoaded) return null;
 
   const filteredEntries = Object.values(entries).filter(entry => entry.date.startsWith(selectedMonthId));
   const totalDaysInFrame = filteredEntries.length;
   
-  // Mood Statistics for filtered entries
   const moodCounts = filteredEntries.reduce((acc, entry) => {
     if (entry.mood) acc[entry.mood] = (acc[entry.mood] || 0) + 1;
     return acc;
@@ -227,7 +215,6 @@ function StatisticsContent() {
         <div className="w-10" />
       </header>
 
-      {/* Global Timeframe Selector */}
       <div className="mb-8 flex justify-center">
         <Select value={selectedMonthId} onValueChange={setSelectedMonthId}>
           <SelectTrigger className="w-[180px] h-10 rounded-full border-stone-100 bg-white shadow-sm font-headline">
@@ -256,7 +243,6 @@ function StatisticsContent() {
         </Card>
       </div>
 
-      {/* 1. Yearly Goals */}
       <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#E6D8CE] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <Star className="w-6 h-6 text-primary-foreground" />
@@ -274,7 +260,6 @@ function StatisticsContent() {
         </div>
       </Card>
 
-      {/* 2. Monthly Goals - Only show if not in full year view */}
       {!isYearlyView && (
         <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5E6E6] mb-8">
           <div className="flex items-center gap-3 mb-6">
@@ -286,27 +271,8 @@ function StatisticsContent() {
             <div className="flex flex-col items-center justify-center p-6 bg-secondary/20 rounded-[2rem] border border-secondary/30">
               <div className="relative w-32 h-32 mb-4">
                 <svg className="w-full h-full transform -rotate-90">
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="58"
-                    stroke="currentColor"
-                    strokeWidth="10"
-                    fill="transparent"
-                    className="text-white/30"
-                  />
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="58"
-                    stroke="currentColor"
-                    strokeWidth="10"
-                    fill="transparent"
-                    strokeDasharray={364.4}
-                    strokeDashoffset={364.4 - (364.4 * goalProgress) / 100}
-                    strokeLinecap="round"
-                    className="text-secondary-foreground transition-all duration-1000"
-                  />
+                  <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-white/30" />
+                  <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="10" fill="transparent" strokeDasharray={364.4} strokeDashoffset={364.4 - (364.4 * goalProgress) / 100} strokeLinecap="round" className="text-secondary-foreground transition-all duration-1000" />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-3xl font-headline text-secondary-foreground">{Math.round(goalProgress)}%</span>
@@ -321,7 +287,6 @@ function StatisticsContent() {
         </Card>
       )}
 
-      {/* 3. Mood */}
       <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F2EDE9] mb-8 overflow-hidden">
         <div className="flex items-center gap-3 mb-6">
           <Smile className="w-6 h-6 text-[#4A3F35]" />
@@ -331,15 +296,7 @@ function StatisticsContent() {
           {moodData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <RePieChart>
-                <Pie
-                  data={moodData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
+                <Pie data={moodData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                   {moodData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={3} />
                   ))}
@@ -364,7 +321,6 @@ function StatisticsContent() {
         </div>
       </Card>
 
-      {/* 4. Habits */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-6 px-2">
           <CheckCircle2 className="w-6 h-6 text-primary-foreground" />
@@ -372,37 +328,21 @@ function StatisticsContent() {
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {DEFAULT_CHECKLIST_ITEMS.map((habit) => (
+          {activeHabitLabels.map((habit) => (
             <Card key={habit} className="p-4 rounded-[1.5rem] border-none shadow-sm bg-[#F2EDE9] overflow-hidden flex flex-col h-44">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="text-sm font-headline text-[#4A3F35] leading-tight flex-1 pr-2">{habit}</h3>
                 <div className="text-[10px] font-headline text-primary-foreground bg-primary/40 px-2 py-0.5 rounded-full">
-                  {habitCounts[habit]} {isYearlyView ? 'Total' : 'Done'}
+                  {habitCounts[habit]} Done
                 </div>
               </div>
               <div className="flex-1 w-full my-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={timeFrameStats}>
                     <YAxis hide />
-                    <XAxis 
-                      dataKey="dayNum" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{fontSize: 8, fill: '#4A3F35', fontWeight: 'bold'}} 
-                      interval={isYearlyView ? 0 : 4}
-                    />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                      cursor={{ fill: 'rgba(74, 63, 53, 0.05)' }}
-                      labelFormatter={(label) => isYearlyView ? label : `Day ${label}`}
-                      formatter={(value: number) => [value, isYearlyView ? 'Completions' : 'Status']}
-                    />
-                    <Bar 
-                      dataKey={habit} 
-                      fill="#4A3F35" 
-                      radius={[4, 4, 0, 0]}
-                      opacity={0.6}
-                    />
+                    <XAxis dataKey="dayNum" axisLine={false} tickLine={false} tick={{fontSize: 8, fill: '#4A3F35', fontWeight: 'bold'}} interval={isYearlyView ? 0 : 4} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} cursor={{ fill: 'rgba(74, 63, 53, 0.05)' }} />
+                    <Bar dataKey={habit} fill="#4A3F35" radius={[4, 4, 0, 0]} opacity={0.6} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -420,7 +360,6 @@ function StatisticsContent() {
         </div>
       </div>
 
-      {/* 5. Habit Momentum */}
       <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#E6D8CE] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <TrendingUp className="w-6 h-6 text-primary-foreground" />
@@ -430,27 +369,10 @@ function StatisticsContent() {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={timeFrameStats}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#white/20" />
-              <XAxis 
-                dataKey="dayNum" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fontSize: 10, fill: '#4A3F35', fontWeight: 'bold'}} 
-                interval={isYearlyView ? 0 : 4}
-              />
+              <XAxis dataKey="dayNum" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#4A3F35', fontWeight: 'bold'}} interval={isYearlyView ? 0 : 4} />
               <YAxis hide domain={[0, 100]} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: '#fff' }}
-                labelStyle={{ fontWeight: 'bold', color: '#4A3F35' }}
-                formatter={(value: number) => [`${Math.round(value)}%`, 'Completion']}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="completionRate" 
-                stroke="#4A3F35" 
-                strokeWidth={4} 
-                dot={{ r: 4, fill: '#4A3F35', strokeWidth: 2, stroke: '#fff' }} 
-                activeDot={{ r: 6 }}
-              />
+              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: '#fff' }} labelStyle={{ fontWeight: 'bold', color: '#4A3F35' }} />
+              <Line type="monotone" dataKey="completionRate" stroke="#4A3F35" strokeWidth={4} dot={{ r: 4, fill: '#4A3F35', strokeWidth: 2, stroke: '#fff' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

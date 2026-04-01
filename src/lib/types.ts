@@ -74,4 +74,31 @@ export const MOODS = [
   { label: 'Peaceful', emoji: '🕊️', color: '#005D52', textColor: '#FFFFFF' },
 ];
 
-export const STICKER_OPTIONS = ['🌸', '✨', '⭐', '🌙', '☁️', '🌿', '💡', '❤️', '🔥', '🌈', '🦋', '🍀'];
+export const STICKER_CATEGORIES = [
+  {
+    label: 'Cute',
+    items: ['🧸', '🎀', '🍭', '🧁', '🐱', '🐰', '🐾', '🎈']
+  },
+  {
+    label: 'Nature',
+    items: ['🌸', '🌷', '🌿', '🌱', '🍃', '🌻', '🦋', '🍄']
+  },
+  {
+    label: 'Celestial',
+    items: ['✨', '⭐', '🌙', '☁️', '☀️', '🌈', '💫', '🪐']
+  },
+  {
+    label: 'Vintage',
+    items: ['📜', '✉️', '🕰️', '🕯️', '📻', '🎞️', '🎻', '🖋️']
+  },
+  {
+    label: 'Aesthetic',
+    items: ['📚', '☕', '🍵', '🎨', '🖌️', '🪴', '👒', '📷']
+  },
+  {
+    label: 'Scrapbook',
+    items: ['🔖', '📍', '🖇️', '📏', '✂️', '🏷️', '📒', '🖍️']
+  }
+];
+
+export const ALL_STICKERS = STICKER_CATEGORIES.flatMap(c => c.items);

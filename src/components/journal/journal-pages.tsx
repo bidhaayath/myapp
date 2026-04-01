@@ -6,7 +6,7 @@ import { PageHeader } from './page-header';
 import { ReflectionInput } from './reflection-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { JournalEntry, MOODS, ChecklistItem, STICKER_OPTIONS, DEFAULT_HABIT_GROUPS, ALL_DEFAULT_HABIT_LABELS } from '@/lib/types';
+import { JournalEntry, MOODS, ChecklistItem, STICKER_CATEGORIES, DEFAULT_HABIT_GROUPS, ALL_DEFAULT_HABIT_LABELS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -275,6 +275,7 @@ export function PageReflectionGrowth({ entry, onUpdate }: PageProps) {
 export function PageFreeWriting({ entry, onUpdate }: PageProps) {
   const [mode, setMode] = useState<'write' | 'draw' | 'sticker'>('write');
   const [drawingTool, setDrawingTool] = useState<'pen' | 'eraser'>('pen');
+  const [stickerCategory, setStickerCategory] = useState(STICKER_CATEGORIES[0].label);
 
   const addSticker = (type: string) => {
     const newSticker = {
@@ -286,6 +287,8 @@ export function PageFreeWriting({ entry, onUpdate }: PageProps) {
     };
     onUpdate({ stickers: [...(entry.stickers || []), newSticker] });
   };
+
+  const currentCategoryItems = STICKER_CATEGORIES.find(c => c.label === stickerCategory)?.items || [];
 
   return (
     <div className="flex flex-col h-full overflow-y-auto px-4 pb-32 pt-8">
@@ -395,16 +398,31 @@ export function PageFreeWriting({ entry, onUpdate }: PageProps) {
         </div>
 
         {mode === 'sticker' && (
-          <div className="mt-4 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm flex flex-wrap gap-4 justify-center animate-in slide-in-from-bottom-2">
-            {STICKER_OPTIONS.map(s => (
-              <button 
-                key={s} 
-                onClick={() => addSticker(s)}
-                className="text-3xl hover:scale-125 transition-transform"
-              >
-                {s}
-              </button>
-            ))}
+          <div className="mt-4 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm animate-in slide-in-from-bottom-2">
+            <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
+              {STICKER_CATEGORIES.map(cat => (
+                <Button
+                  key={cat.label}
+                  variant={stickerCategory === cat.label ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStickerCategory(cat.label)}
+                  className="rounded-full text-[10px] uppercase tracking-widest font-headline h-7"
+                >
+                  {cat.label}
+                </Button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-4 justify-center">
+              {currentCategoryItems.map(s => (
+                <button 
+                  key={s} 
+                  onClick={() => addSticker(s)}
+                  className="text-3xl hover:scale-125 transition-transform"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

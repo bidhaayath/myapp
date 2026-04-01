@@ -1,30 +1,40 @@
+
 "use client"
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Calendar, Smile, Award, CheckCircle2, Target, Star, TrendingUp } from 'lucide-react';
-import { MOODS, DEFAULT_CHECKLIST_ITEMS, Goal, JournalEntry } from '@/lib/types';
+import { MOODS, DEFAULT_CHECKLIST_ITEMS, Goal } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { format, parse, startOfYear, addMonths, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, getDaysInMonth } from 'date-fns';
+import { format, parse, startOfYear, addMonths, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { 
   Tooltip, ResponsiveContainer, 
   PieChart as RePieChart, Pie, Cell,
   LineChart, Line, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 
-export default function StatisticsPage() {
+function StatisticsContent() {
+  const searchParams = useSearchParams();
   const { user } = useUser();
   const firestore = useFirestore();
   const { entries, isLoaded, getStreak } = useJournalStore();
 
   const currentMonthId = format(new Date(), 'yyyy-MM');
-  const [selectedMonthId, setSelectedMonthId] = useState(currentMonthId);
+  const monthFromQuery = searchParams.get('month');
+  const [selectedMonthId, setSelectedMonthId] = useState(monthFromQuery || currentMonthId);
+
+  useEffect(() => {
+    if (monthFromQuery) {
+      setSelectedMonthId(monthFromQuery);
+    }
+  }, [monthFromQuery]);
 
   // Fetch monthly goals collection
   const monthlyGoalsRef = useMemoFirebase(() => {
@@ -73,7 +83,7 @@ export default function StatisticsPage() {
       end: endOfMonth(selectedDate)
     });
 
-    const dailyData = days.map(day => {
+    return days.map(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
       const entry = entries[dateStr];
       const dayNum = format(day, 'd');
@@ -98,8 +108,6 @@ export default function StatisticsPage() {
         ...habitData
       };
     });
-
-    return dailyData;
   }, [entries, selectedMonthId]);
 
   if (!isLoaded) return null;
@@ -134,7 +142,7 @@ export default function StatisticsPage() {
             <ChevronLeft className="w-6 h-6" />
           </Button>
         </Link>
-        <h1 className="text-3xl font-headline text-[#4A3F35]">Insights</h1>
+        <h1 className="text-3xl font-headline text-[#4A3F35]">Deep Insights</h1>
         <div className="w-10" />
       </header>
 
@@ -159,20 +167,20 @@ export default function StatisticsPage() {
 
       {/* Core Stats Overview */}
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-primary/30 text-center">
+        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-primary/40 text-center">
           <Calendar className="w-6 h-6 mx-auto mb-2 text-primary-foreground" />
           <p className="text-2xl font-headline text-primary-foreground">{totalDays}</p>
           <p className="text-[10px] uppercase tracking-widest text-primary-foreground/70 font-headline">Journal Days</p>
         </Card>
-        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-secondary/30 text-center">
+        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-secondary/40 text-center">
           <Award className="w-6 h-6 mx-auto mb-2 text-secondary-foreground" />
           <p className="text-2xl font-headline text-secondary-foreground">{streak}</p>
           <p className="text-[10px] uppercase tracking-widest text-secondary-foreground/70 font-headline">Current Streak</p>
         </Card>
       </div>
 
-      {/* Total Habit Progress Chart */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5EBE0] mb-8">
+      {/* Total Habit Progress Chart - MOMENTUM */}
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F2E6DA] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <TrendingUp className="w-6 h-6 text-primary-foreground" />
           <h2 className="text-xl font-headline text-[#4A3F35]">Habit Momentum</h2>
@@ -180,7 +188,7 @@ export default function StatisticsPage() {
         <div className="h-48 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={monthStats}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0d5c9" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d7c4b5" />
               <XAxis 
                 dataKey="dayNum" 
                 axisLine={false} 
@@ -205,8 +213,8 @@ export default function StatisticsPage() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <p className="text-xs text-center text-stone-500 mt-4 font-body">
-          Daily overall checklist completion for {format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'MMMM yyyy')}
+        <p className="text-xs text-center text-stone-600 mt-4 font-body italic">
+          Overall checklist completion for {format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'MMMM yyyy')}
         </p>
       </Card>
 
@@ -263,37 +271,38 @@ export default function StatisticsPage() {
         </div>
       </Card>
 
-      {/* Individual Habit Progress Section */}
+      {/* Individual Habit Mastery Tracker - Compact Grid */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-6 px-2">
           <CheckCircle2 className="w-6 h-6 text-primary-foreground" />
           <h2 className="text-2xl font-headline text-[#4A3F35]">Habit Mastery</h2>
         </div>
         
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {DEFAULT_CHECKLIST_ITEMS.map((habit) => (
-            <Card key={habit} className="p-6 rounded-[2rem] border-none shadow-sm bg-[#F5F5F5] overflow-hidden">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-headline text-[#4A3F35]">{habit}</h3>
-                <div className="text-[10px] uppercase tracking-widest text-primary-foreground font-headline bg-primary/30 px-3 py-1 rounded-full">
-                  Monthly View
+            <Card key={habit} className="p-4 rounded-[1.5rem] border-none shadow-sm bg-[#F5EBE0] overflow-hidden flex flex-col h-40">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-sm font-headline text-[#4A3F35] leading-tight flex-1 pr-2">{habit}</h3>
+                <div className="text-[8px] uppercase tracking-widest text-primary-foreground/70 font-headline bg-primary/20 px-2 py-0.5 rounded-full">
+                  Monthly
                 </div>
               </div>
-              <div className="h-32 w-full">
+              <div className="flex-1 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={monthStats}>
                     <YAxis hide domain={[0, 1.2]} />
+                    <XAxis hide dataKey="dayNum" />
                     <Tooltip 
-                      contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '10px' }}
+                      contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '10px' }}
                       formatter={(value: number) => [value === 1 ? 'Done' : 'Missed', 'Status']}
                     />
                     <Line 
                       type="stepAfter" 
                       dataKey={habit} 
-                      stroke="#C8B8AC" 
+                      stroke="#4A3F35" 
                       strokeWidth={2} 
                       dot={false}
-                      fill="#C8B8AC"
+                      fill="#4A3F35"
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -302,36 +311,6 @@ export default function StatisticsPage() {
           ))}
         </div>
       </div>
-
-      {/* Yearly Vision Stats */}
-      {allYearlyGoals && allYearlyGoals.length > 0 && (
-        <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#ECE4DC] mb-8">
-          <div className="flex items-center gap-3 mb-6">
-            <Star className="w-6 h-6 text-primary-foreground" />
-            <h2 className="text-xl font-headline text-[#4A3F35]">Yearly Vision</h2>
-          </div>
-          <div className="space-y-6">
-            {allYearlyGoals.map((yearDoc) => {
-              const goals = yearDoc.goals || [];
-              const completed = goals.filter(g => g.completed).length;
-              const total = goals.length;
-              const progress = total > 0 ? (completed / total) * 100 : 0;
-              return (
-                <div key={yearDoc.id} className="space-y-3">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-lg font-headline text-[#4A3F35]">{yearDoc.id} Growth</span>
-                    <span className="text-xs text-stone-600">{completed}/{total} Achieved</span>
-                  </div>
-                  <Progress value={progress} className="h-2 bg-stone-300" />
-                  <p className="text-xs text-stone-500 italic font-body">
-                    {progress === 100 ? "Amazing! You've reached your vision." : `${Math.round(progress)}% of your yearly intentions completed.`}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
 
       {/* Mood Distribution */}
       <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5EBE0] mb-8 overflow-hidden">
@@ -380,5 +359,13 @@ export default function StatisticsPage() {
         "Growth is a slow process, but quitting won't speed it up."
       </p>
     </div>
+  );
+}
+
+export default function StatisticsPage() {
+  return (
+    <Suspense fallback={null}>
+      <StatisticsContent />
+    </Suspense>
   );
 }

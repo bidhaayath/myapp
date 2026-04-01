@@ -3,11 +3,12 @@
 
 import React, { useState, Suspense, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, parse } from 'date-fns';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { JournalContainer } from '@/components/journal/journal-container';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings, LogOut, BarChart3 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { MOODS } from '@/lib/types';
 import Link from 'next/link';
@@ -54,6 +55,14 @@ function Dashboard() {
     );
   }
 
+  const currentMonthId = format(currentMonth, 'yyyy-MM');
+
+  // Generate a list of the last 12 months for the selector
+  const availableMonths = Array.from({ length: 12 }, (_, i) => {
+    const d = subMonths(new Date(), i);
+    return { id: format(d, 'yyyy-MM'), label: format(d, 'MMMM yyyy') };
+  });
+
   return (
     <div className="min-h-screen bg-[#FCFAFA] flex flex-col pb-24">
       {/* Header */}
@@ -78,9 +87,15 @@ function Dashboard() {
       <section className="px-4 mb-8">
         <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-stone-100/50">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-headline text-[#4A3F35]">
-              {format(currentMonth, 'MMMM yyyy')}
-            </h2>
+            <div className="flex flex-col">
+              <h2 className="text-xl font-headline text-[#4A3F35]">
+                {format(currentMonth, 'MMMM yyyy')}
+              </h2>
+              <Link href={`/stats?month=${currentMonthId}`} className="text-[10px] text-primary-foreground/70 font-headline uppercase tracking-widest hover:text-primary-foreground transition-colors flex items-center gap-1 mt-1">
+                <BarChart3 className="w-3 h-3" />
+                View Monthly Insights
+              </Link>
+            </div>
             <div className="flex gap-2">
               <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
                 <ChevronLeft className="w-5 h-5" />
@@ -140,20 +155,42 @@ function Dashboard() {
 
       {/* Quick Navigation Cards */}
       <section className="px-4 grid grid-cols-2 gap-4">
-        <Link href="/goals/monthly" className="bg-secondary/40 p-6 rounded-[2rem] border border-secondary/50 flex flex-col justify-between h-40 group shadow-sm transition-all active:scale-95">
+        <Link href="/goals/monthly" className="bg-secondary p-6 rounded-[2rem] border border-secondary/50 flex flex-col justify-between h-40 group shadow-sm transition-all active:scale-95">
           <Target className="w-8 h-8 text-secondary-foreground group-hover:scale-110 transition-transform" />
           <div>
             <h3 className="text-xl font-headline text-secondary-foreground">Monthly Goals</h3>
             <p className="text-xs text-secondary-foreground/80 font-body">Reset your focus</p>
           </div>
         </Link>
-        <Link href="/goals/yearly" className="bg-primary/40 p-6 rounded-[2rem] border border-primary/50 flex flex-col justify-between h-40 group shadow-sm transition-all active:scale-95">
+        <Link href="/goals/yearly" className="bg-primary p-6 rounded-[2rem] border border-primary/50 flex flex-col justify-between h-40 group shadow-sm transition-all active:scale-95">
           <CalendarIcon className="w-8 h-8 text-primary-foreground group-hover:scale-110 transition-transform" />
           <div>
             <h3 className="text-xl font-headline text-primary-foreground">Yearly Vision</h3>
             <p className="text-xs text-primary-foreground/80 font-body">Long term growth</p>
           </div>
         </Link>
+      </section>
+
+      {/* Stats Navigation Link */}
+      <section className="px-4 mt-4">
+         <div className="bg-[#E6D8CE44] p-6 rounded-[2rem] border border-stone-200/50 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+               <TrendingUp className="w-6 h-6 text-primary-foreground" />
+               <span className="font-headline text-[#4A3F35]">Deep Insights</span>
+            </div>
+            <Select onValueChange={(val) => router.push(`/stats?month=${val}`)}>
+              <SelectTrigger className="w-[140px] h-8 rounded-full border-stone-100 bg-white shadow-sm font-headline text-[10px] uppercase tracking-wider">
+                <SelectValue placeholder="Jump to Stats" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl">
+                {availableMonths.map(m => (
+                  <SelectItem key={m.id} value={m.id} className="font-body text-xs">
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+         </div>
       </section>
 
       {/* Bottom Nav */}

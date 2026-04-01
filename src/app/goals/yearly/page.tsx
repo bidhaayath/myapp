@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Plus, Trash2, Star } from 'lucide-react';
+import { ChevronLeft, Plus, Trash2, Star, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
@@ -15,8 +15,10 @@ import { Goal } from '@/lib/types';
 
 export default function YearlyGoalsPage() {
   const { user, firestore, isLoaded, updateYearlyGoals } = useJournalStore();
+  const [viewedYear, setViewedYear] = useState(new Date().getFullYear());
   const [newGoal, setNewGoal] = useState('');
-  const yearId = new Date().getFullYear().toString();
+  
+  const yearId = viewedYear.toString();
 
   const yearlyRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -32,17 +34,20 @@ export default function YearlyGoalsPage() {
   const addGoal = () => {
     if (!newGoal.trim()) return;
     const goal = { id: Date.now().toString(), text: newGoal, completed: false };
-    updateYearlyGoals([...goals, goal]);
+    updateYearlyGoals(yearId, [...goals, goal]);
     setNewGoal('');
   };
 
   const toggleGoal = (id: string) => {
-    updateYearlyGoals(goals.map(g => g.id === id ? { ...g, completed: !g.completed } : g));
+    updateYearlyGoals(yearId, goals.map(g => g.id === id ? { ...g, completed: !g.completed } : g));
   };
 
   const removeGoal = (id: string) => {
-    updateYearlyGoals(goals.filter(g => g.id !== id));
+    updateYearlyGoals(yearId, goals.filter(g => g.id !== id));
   };
+
+  const nextYear = () => setViewedYear(prev => prev + 1);
+  const prevYear = () => setViewedYear(prev => prev - 1);
 
   return (
     <div className="min-h-screen bg-[#FCFAFA] px-6 pt-12 pb-24">
@@ -56,10 +61,22 @@ export default function YearlyGoalsPage() {
         <div className="w-10" />
       </header>
 
+      <div className="flex items-center justify-between mb-6 px-2">
+        <Button variant="ghost" size="icon" onClick={prevYear} className="rounded-full">
+          <ChevronLeft className="w-5 h-5" />
+        </Button>
+        <h2 className="text-2xl font-headline text-[#4A3F35]">
+          Vision for {viewedYear}
+        </h2>
+        <Button variant="ghost" size="icon" onClick={nextYear} className="rounded-full">
+          <ChevronRight className="w-5 h-5" />
+        </Button>
+      </div>
+
       <div className="bg-primary/20 rounded-[2.5rem] p-8 border border-primary/30 mb-8 relative overflow-hidden">
         <Star className="absolute top-4 right-4 w-12 h-12 text-primary/30" />
         <p className="text-sm font-headline uppercase tracking-widest text-primary-foreground mb-2">
-          {yearId} Vision
+          {viewedYear} Growth
         </p>
         <h2 className="text-3xl font-headline text-primary-foreground mb-6">Long Term Growth</h2>
         

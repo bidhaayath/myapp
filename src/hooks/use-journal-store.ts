@@ -72,14 +72,6 @@ export function useJournalStore() {
     setDocumentNonBlocking(ref, finalData, { merge: true });
   };
 
-  // Goals
-  const getMonthlyGoals = (date: Date) => {
-    const monthId = format(startOfMonth(date), 'yyyy-MM');
-    // For simplicity, we just return the data if it exists in a derived state or fetch it
-    // In this MVP refactor, we'll use a document per month
-    return entries[monthId]?.mood; // This is just a placeholder, real logic below
-  };
-
   const updateMonthlyGoals = (date: Date, goals: Goal[]) => {
     if (!user || !getMonthlyRef) return;
     const monthId = format(startOfMonth(date), 'yyyy-MM');
@@ -87,10 +79,9 @@ export function useJournalStore() {
     setDocumentNonBlocking(ref, { userId: user.uid, goals }, { merge: true });
   };
 
-  const updateYearlyGoals = (goals: Goal[]) => {
+  const updateYearlyGoals = (year: string, goals: Goal[]) => {
     if (!user || !getYearlyRef) return;
-    const yearId = format(new Date(), 'yyyy');
-    const ref = getYearlyRef(yearId);
+    const ref = getYearlyRef(year);
     setDocumentNonBlocking(ref, { userId: user.uid, goals }, { merge: true });
   };
 

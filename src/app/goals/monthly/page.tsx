@@ -1,14 +1,14 @@
 
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, Plus, Trash2, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { format, startOfMonth } from 'date-fns';
+import { format, startOfMonth, addMonths, subMonths } from 'date-fns';
 import Link from 'next/link';
 import { useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -17,9 +17,10 @@ import { Goal } from '@/lib/types';
 
 export default function MonthlyGoalsPage() {
   const { user, firestore, isLoaded, updateMonthlyGoals } = useJournalStore();
+  const [viewedDate, setViewedDate] = useState(new Date());
   const [newGoal, setNewGoal] = useState('');
-  const today = new Date();
-  const monthId = format(startOfMonth(today), 'yyyy-MM');
+  
+  const monthId = format(startOfMonth(viewedDate), 'yyyy-MM');
 
   const monthlyRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -37,17 +38,20 @@ export default function MonthlyGoalsPage() {
   const addGoal = () => {
     if (!newGoal.trim()) return;
     const goal = { id: Date.now().toString(), text: newGoal, completed: false };
-    updateMonthlyGoals(today, [...goals, goal]);
+    updateMonthlyGoals(viewedDate, [...goals, goal]);
     setNewGoal('');
   };
 
   const toggleGoal = (id: string) => {
-    updateMonthlyGoals(today, goals.map(g => g.id === id ? { ...g, completed: !g.completed } : g));
+    updateMonthlyGoals(viewedDate, goals.map(g => g.id === id ? { ...g, completed: !g.completed } : g));
   };
 
   const removeGoal = (id: string) => {
-    updateMonthlyGoals(today, goals.filter(g => g.id !== id));
+    updateMonthlyGoals(viewedDate, goals.filter(g => g.id !== id));
   };
+
+  const nextMonth = () => setViewedDate(prev => addMonths(prev, 1));
+  const prevMonth = () => setViewedDate(prev => subMonths(prev, 1));
 
   return (
     <div className="min-h-screen bg-[#FCFAFA] px-6 pt-12 pb-24">
@@ -61,11 +65,22 @@ export default function MonthlyGoalsPage() {
         <div className="w-10" />
       </header>
 
+      <div className="flex items-center justify-between mb-6 px-2">
+        <Button variant="ghost" size="icon" onClick={prevMonth} className="rounded-full">
+          <ChevronLeft className="w-5 h-5" />
+        </Button>
+        <h2 className="text-xl font-headline text-[#4A3F35]">
+          {format(viewedDate, 'MMMM yyyy')}
+        </h2>
+        <Button variant="ghost" size="icon" onClick={nextMonth} className="rounded-full">
+          <ChevronRight className="w-5 h-5" />
+        </Button>
+      </div>
+
       <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-stone-100/50 mb-8">
         <p className="text-sm font-headline uppercase tracking-widest text-muted-foreground mb-2">
-          {format(today, 'MMMM yyyy')}
+          Focus & Intentions
         </p>
-        <h2 className="text-2xl font-headline text-[#4A3F35] mb-6">Focus & Intentions</h2>
         
         <div className="space-y-4 mb-8">
           <div className="flex justify-between text-sm font-headline mb-1">

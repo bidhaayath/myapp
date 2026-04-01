@@ -291,7 +291,7 @@ function Dashboard() {
           <TrendingUp className="w-6 h-6" />
         </Link>
         <Link href="/rewards" className="text-muted-foreground hover:text-primary-foreground transition-colors">
-          <Award className="w-6 h-6" />
+          <Flower className="w-6 h-6" />
         </Link>
         <Link href="/settings" className="text-muted-foreground hover:text-primary-foreground transition-colors">
           <Settings className="w-6 h-6" />

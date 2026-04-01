@@ -3,18 +3,19 @@
 import React, { useState, useMemo } from 'react';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Calendar, Smile, Award, CheckCircle2, Target, Star } from 'lucide-react';
-import { MOODS, DEFAULT_CHECKLIST_ITEMS, Goal } from '@/lib/types';
+import { ChevronLeft, Calendar, Smile, Award, CheckCircle2, Target, Star, TrendingUp } from 'lucide-react';
+import { MOODS, DEFAULT_CHECKLIST_ITEMS, Goal, JournalEntry } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { format, parse, startOfYear, addMonths } from 'date-fns';
+import { format, parse, startOfYear, addMonths, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, getDaysInMonth } from 'date-fns';
 import { 
   Tooltip, ResponsiveContainer, 
-  PieChart as RePieChart, Pie, Cell
+  PieChart as RePieChart, Pie, Cell,
+  LineChart, Line, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 
 export default function StatisticsPage() {
@@ -49,12 +50,10 @@ export default function StatisticsPage() {
     const now = new Date();
     const currentYearStart = startOfYear(now);
     
-    // Generate all 12 months for the current year
     for (let i = 0; i < 12; i++) {
       months.push(format(addMonths(currentYearStart, i), 'yyyy-MM'));
     }
 
-    // Add any historical months that have data but aren't in the current year list
     if (allMonthlyGoals) {
       allMonthlyGoals.forEach(m => {
         if (!months.includes(m.id)) {
@@ -63,9 +62,45 @@ export default function StatisticsPage() {
       });
     }
 
-    // Sort descending (most recent first)
     return months.sort((a, b) => b.localeCompare(a));
   }, [allMonthlyGoals]);
+
+  // Data preparation for the selected month
+  const monthStats = useMemo(() => {
+    const selectedDate = parse(selectedMonthId, 'yyyy-MM', new Date());
+    const days = eachDayOfInterval({
+      start: startOfMonth(selectedDate),
+      end: endOfMonth(selectedDate)
+    });
+
+    const dailyData = days.map(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const entry = entries[dateStr];
+      const dayNum = format(day, 'd');
+
+      const habitData: Record<string, number> = {};
+      let totalCompleted = 0;
+
+      DEFAULT_CHECKLIST_ITEMS.forEach(label => {
+        const isCompleted = entry?.checklist?.find(i => i.label === label)?.checked ? 1 : 0;
+        habitData[label] = isCompleted;
+        totalCompleted += isCompleted;
+      });
+
+      const completionRate = DEFAULT_CHECKLIST_ITEMS.length > 0 
+        ? (totalCompleted / DEFAULT_CHECKLIST_ITEMS.length) * 100 
+        : 0;
+
+      return {
+        date: dateStr,
+        dayNum,
+        completionRate,
+        ...habitData
+      };
+    });
+
+    return dailyData;
+  }, [entries, selectedMonthId]);
 
   if (!isLoaded) return null;
 
@@ -84,19 +119,12 @@ export default function StatisticsPage() {
     color: m.color
   })).filter(d => d.value > 0);
 
-  // Individual Habit Statistics
-  const habitStats = DEFAULT_CHECKLIST_ITEMS.map(label => {
-    const completedCount = entryList.filter(e => e.checklist.find(i => i.label === label)?.checked).length;
-    const rate = totalDays > 0 ? Math.round((completedCount / totalDays) * 100) : 0;
-    return { label, count: completedCount, rate };
-  }).sort((a, b) => b.rate - a.rate);
-
   const streak = getStreak();
 
   const goals = selectedMonthData?.goals || [];
-  const completed = goals.filter(g => g.completed).length;
-  const total = goals.length;
-  const progress = total > 0 ? (completed / total) * 100 : 0;
+  const completedGoals = goals.filter(g => g.completed).length;
+  const totalGoals = goals.length;
+  const goalProgress = totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-[#FCFAFA] px-6 pt-12 pb-24">
@@ -109,6 +137,25 @@ export default function StatisticsPage() {
         <h1 className="text-3xl font-headline text-[#4A3F35]">Insights</h1>
         <div className="w-10" />
       </header>
+
+      {/* Global Month Selector */}
+      <div className="mb-8 flex justify-center">
+        <Select value={selectedMonthId} onValueChange={setSelectedMonthId}>
+          <SelectTrigger className="w-[180px] h-10 rounded-full border-stone-100 bg-white shadow-sm font-headline">
+            <SelectValue placeholder="Select month" />
+          </SelectTrigger>
+          <SelectContent className="rounded-2xl border-stone-100">
+            {availableMonths.map(monthId => {
+              const date = parse(monthId, 'yyyy-MM', new Date());
+              return (
+                <SelectItem key={monthId} value={monthId} className="font-body">
+                  {format(date, 'MMMM yyyy')}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* Core Stats Overview */}
       <div className="grid grid-cols-2 gap-4 mb-8">
@@ -124,28 +171,50 @@ export default function StatisticsPage() {
         </Card>
       </div>
 
+      {/* Total Habit Progress Chart */}
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
+        <div className="flex items-center gap-3 mb-6">
+          <TrendingUp className="w-6 h-6 text-primary-foreground" />
+          <h2 className="text-xl font-headline text-[#4A3F35]">Habit Momentum</h2>
+        </div>
+        <div className="h-48 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={monthStats}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+              <XAxis 
+                dataKey="dayNum" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fontSize: 10, fill: '#A0A0A0'}} 
+                interval={4}
+              />
+              <YAxis hide domain={[0, 100]} />
+              <Tooltip 
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                labelStyle={{ fontWeight: 'bold' }}
+                formatter={(value: number) => [`${Math.round(value)}%`, 'Completion']}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="completionRate" 
+                stroke="#4A3F35" 
+                strokeWidth={3} 
+                dot={{ r: 3, fill: '#4A3F35' }} 
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-xs text-center text-muted-foreground mt-4 font-body">
+          Daily overall checklist completion for {format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'MMMM yyyy')}
+        </p>
+      </Card>
+
       {/* Monthly Goals Insights */}
       <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Target className="w-6 h-6 text-secondary-foreground" />
-            <h2 className="text-xl font-headline text-[#4A3F35]">Monthly Momentum</h2>
-          </div>
-          <Select value={selectedMonthId} onValueChange={setSelectedMonthId}>
-            <SelectTrigger className="w-[140px] h-8 rounded-full border-stone-100 bg-stone-50/50 text-xs font-headline">
-              <SelectValue placeholder="Select month" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border-stone-100">
-              {availableMonths.map(monthId => {
-                const date = parse(monthId, 'yyyy-MM', new Date());
-                return (
-                  <SelectItem key={monthId} value={monthId} className="text-xs font-body">
-                    {format(date, 'MMMM yyyy')}
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-3 mb-6">
+          <Target className="w-6 h-6 text-secondary-foreground" />
+          <h2 className="text-xl font-headline text-[#4A3F35]">Monthly Intentions</h2>
         </div>
 
         <div className="space-y-6">
@@ -169,30 +238,70 @@ export default function StatisticsPage() {
                   strokeWidth="10"
                   fill="transparent"
                   strokeDasharray={364.4}
-                  strokeDashoffset={364.4 - (364.4 * progress) / 100}
+                  strokeDashoffset={364.4 - (364.4 * goalProgress) / 100}
                   strokeLinecap="round"
                   className="text-secondary transition-all duration-1000"
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-3xl font-headline text-secondary-foreground">{Math.round(progress)}%</span>
+                <span className="text-3xl font-headline text-secondary-foreground">{Math.round(goalProgress)}%</span>
               </div>
             </div>
             <div className="text-center">
-              <p className="text-lg font-headline text-[#4A3F35]">{total} Goals Set</p>
-              <p className="text-sm text-muted-foreground font-body">{completed} Completed successfully</p>
+              <p className="text-lg font-headline text-[#4A3F35]">{totalGoals} Goals Set</p>
+              <p className="text-sm text-muted-foreground font-body">{completedGoals} Completed successfully</p>
             </div>
           </div>
           
           <div className="space-y-2">
             <div className="flex justify-between text-[10px] font-headline uppercase tracking-widest text-muted-foreground px-1">
               <span>Goal Progress</span>
-              <span>{completed} / {total}</span>
+              <span>{completedGoals} / {totalGoals}</span>
             </div>
-            <Progress value={progress} className="h-2 bg-stone-100" />
+            <Progress value={goalProgress} className="h-2 bg-stone-100" />
           </div>
         </div>
       </Card>
+
+      {/* Individual Habit Progress Section */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-6 px-2">
+          <CheckCircle2 className="w-6 h-6 text-primary-foreground" />
+          <h2 className="text-2xl font-headline text-[#4A3F35]">Habit Mastery</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-6">
+          {DEFAULT_CHECKLIST_ITEMS.map((habit) => (
+            <Card key={habit} className="p-6 rounded-[2rem] border-none shadow-sm bg-white overflow-hidden">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-headline text-[#4A3F35]">{habit}</h3>
+                <div className="text-[10px] uppercase tracking-widest text-primary-foreground font-headline bg-primary/20 px-3 py-1 rounded-full">
+                  Monthly View
+                </div>
+              </div>
+              <div className="h-32 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={monthStats}>
+                    <YAxis hide domain={[0, 1.2]} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '10px' }}
+                      formatter={(value: number) => [value === 1 ? 'Done' : 'Missed', 'Status']}
+                    />
+                    <Line 
+                      type="stepAfter" 
+                      dataKey={habit} 
+                      stroke="#E6D8CE" 
+                      strokeWidth={2} 
+                      dot={false}
+                      fill="#E6D8CE"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
 
       {/* Yearly Vision Stats */}
       {allYearlyGoals && allYearlyGoals.length > 0 && (
@@ -262,30 +371,6 @@ export default function StatisticsPage() {
                 {m.name}
               </span>
               <span className="text-muted-foreground font-headline">{totalDays > 0 ? Math.round((m.value/totalDays)*100) : 0}%</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Habit Mastery */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white mb-8">
-        <div className="flex items-center gap-3 mb-6">
-          <CheckCircle2 className="w-6 h-6 text-primary-foreground" />
-          <h2 className="text-xl font-headline text-[#4A3F35]">Habit Progress</h2>
-        </div>
-        <div className="space-y-6">
-          {habitStats.slice(0, 15).map((habit) => (
-            <div key={habit.label} className="space-y-2">
-              <div className="flex justify-between items-baseline">
-                <span className="text-sm font-body text-stone-700">{habit.label}</span>
-                <span className="text-xs font-headline text-stone-400">{habit.count} completions</span>
-              </div>
-              <div className="relative h-3 w-full bg-stone-100 rounded-full overflow-hidden">
-                <div 
-                  className="absolute inset-y-0 left-0 bg-primary-foreground/60 transition-all duration-1000" 
-                  style={{ width: `${habit.rate}%` }}
-                />
-              </div>
             </div>
           ))}
         </div>

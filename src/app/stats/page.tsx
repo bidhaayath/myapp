@@ -17,7 +17,8 @@ import { format, parse, startOfYear, addMonths, eachDayOfInterval, startOfMonth,
 import { 
   Tooltip, ResponsiveContainer, 
   PieChart as RePieChart, Pie, Cell,
-  LineChart, Line, XAxis, YAxis, CartesianGrid
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar
 } from 'recharts';
 
 function StatisticsContent() {
@@ -109,6 +110,15 @@ function StatisticsContent() {
       };
     });
   }, [entries, selectedMonthId]);
+
+  // Calculate total completions per habit for the month
+  const habitCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    DEFAULT_CHECKLIST_ITEMS.forEach(habit => {
+      counts[habit] = monthStats.reduce((sum, day) => sum + (day[habit] || 0), 0);
+    });
+    return counts;
+  }, [monthStats]);
 
   if (!isLoaded) return null;
 
@@ -280,32 +290,34 @@ function StatisticsContent() {
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {DEFAULT_CHECKLIST_ITEMS.map((habit) => (
-            <Card key={habit} className="p-4 rounded-[1.5rem] border-none shadow-sm bg-[#F5EBE0] overflow-hidden flex flex-col h-40">
+            <Card key={habit} className="p-4 rounded-[1.5rem] border-none shadow-sm bg-[#F5EBE0] overflow-hidden flex flex-col h-44">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="text-sm font-headline text-[#4A3F35] leading-tight flex-1 pr-2">{habit}</h3>
-                <div className="text-[8px] uppercase tracking-widest text-primary-foreground/70 font-headline bg-primary/20 px-2 py-0.5 rounded-full">
-                  Monthly
+                <div className="text-[10px] font-headline text-primary-foreground bg-primary/20 px-2 py-0.5 rounded-full">
+                  {habitCounts[habit]} Done
                 </div>
               </div>
-              <div className="flex-1 w-full">
+              <div className="flex-1 w-full my-2">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthStats}>
+                  <BarChart data={monthStats}>
                     <YAxis hide domain={[0, 1.2]} />
                     <XAxis hide dataKey="dayNum" />
                     <Tooltip 
                       contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '10px' }}
+                      cursor={{ fill: 'rgba(74, 63, 53, 0.05)' }}
                       formatter={(value: number) => [value === 1 ? 'Done' : 'Missed', 'Status']}
                     />
-                    <Line 
-                      type="stepAfter" 
+                    <Bar 
                       dataKey={habit} 
-                      stroke="#4A3F35" 
-                      strokeWidth={2} 
-                      dot={false}
-                      fill="#4A3F35"
+                      fill="#4A3F35" 
+                      radius={[2, 2, 0, 0]}
                     />
-                  </LineChart>
+                  </BarChart>
                 </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between items-center text-[10px] text-stone-500 font-body px-1">
+                <span>Monthly Progress</span>
+                <span className="font-headline text-stone-700">{Math.round((habitCounts[habit] / monthStats.length) * 100)}%</span>
               </div>
             </Card>
           ))}

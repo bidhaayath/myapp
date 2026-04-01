@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { format, parse } from 'date-fns';
+import { format, parse, startOfYear, addMonths } from 'date-fns';
 import { 
   Tooltip, ResponsiveContainer, 
   PieChart as RePieChart, Pie, Cell
@@ -46,14 +46,27 @@ export default function StatisticsPage() {
   }, [allMonthlyGoals, selectedMonthId]);
 
   const availableMonths = useMemo(() => {
-    if (!allMonthlyGoals) return [];
-    // Ensure current month is in the list even if no goals yet
-    const monthIds = allMonthlyGoals.map(m => m.id);
-    if (!monthIds.includes(currentMonthId)) {
-      monthIds.push(currentMonthId);
+    const months: string[] = [];
+    const now = new Date();
+    const currentYearStart = startOfYear(now);
+    
+    // Generate all 12 months for the current year
+    for (let i = 0; i < 12; i++) {
+      months.push(format(addMonths(currentYearStart, i), 'yyyy-MM'));
     }
-    return monthIds.sort((a, b) => b.localeCompare(a));
-  }, [allMonthlyGoals, currentMonthId]);
+
+    // Add any historical months that have data but aren't in the current year list
+    if (allMonthlyGoals) {
+      allMonthlyGoals.forEach(m => {
+        if (!months.includes(m.id)) {
+          months.push(m.id);
+        }
+      });
+    }
+
+    // Sort descending (most recent first)
+    return months.sort((a, b) => b.localeCompare(a));
+  }, [allMonthlyGoals]);
 
   if (!isLoaded) return null;
 
@@ -249,7 +262,7 @@ export default function StatisticsPage() {
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
                 {m.name}
               </span>
-              <span className="text-muted-foreground">{Math.round((m.value/totalDays)*100)}%</span>
+              <span className="text-muted-foreground">{totalDays > 0 ? Math.round((m.value/totalDays)*100) : 0}%</span>
             </div>
           ))}
         </div>

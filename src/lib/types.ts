@@ -53,14 +53,14 @@ export const DEFAULT_CHECKLIST_ITEMS = [
 ];
 
 export const MOODS = [
-  { label: 'Happy', emoji: '😊', color: '#FFF9C4', textColor: '#827717' },
-  { label: 'Calm', emoji: '😌', color: '#E3F2FD', textColor: '#0D47A1' },
-  { label: 'Motivated', emoji: '✨', color: '#E8F5E9', textColor: '#1B5E20' },
-  { label: 'Tired', emoji: '🥱', color: '#F5F5F5', textColor: '#424242' },
-  { label: 'Sad', emoji: '😔', color: '#F3E5F5', textColor: '#4A148C' },
-  { label: 'Anxious', emoji: '😟', color: '#FFF3E0', textColor: '#E65100' },
-  { label: 'Stressed', emoji: '😫', color: '#FFEBEE', textColor: '#B71C1C' },
-  { label: 'Peaceful', emoji: '🕊️', color: '#E0F2F1', textColor: '#004D40' },
+  { label: 'Happy', emoji: '😊', color: '#FFD54F', textColor: '#5D4037' },
+  { label: 'Calm', emoji: '😌', color: '#90CAF9', textColor: '#0D47A1' },
+  { label: 'Motivated', emoji: '✨', color: '#A5D6A7', textColor: '#1B5E20' },
+  { label: 'Tired', emoji: '🥱', color: '#BDBDBD', textColor: '#212121' },
+  { label: 'Sad', emoji: '😔', color: '#CE93D8', textColor: '#4A148C' },
+  { label: 'Anxious', emoji: '😟', color: '#FFB74D', textColor: '#E65100' },
+  { label: 'Stressed', emoji: '😫', color: '#EF9A9A', textColor: '#B71C1C' },
+  { label: 'Peaceful', emoji: '🕊️', color: '#80CBC4', textColor: '#004D40' },
 ];
 
 export const STICKER_OPTIONS = ['🌸', '✨', '⭐', '🌙', '☁️', '🌿', '💡', '❤️', '🔥', '🌈', '🦋', '🍀'];

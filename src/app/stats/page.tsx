@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -150,7 +149,7 @@ export default function StatisticsPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="flex flex-col items-center justify-center p-6 bg-secondary/5 rounded-[2rem] border border-secondary/10">
+          <div className="flex flex-col items-center justify-center p-6 bg-secondary/15 rounded-[2rem] border border-secondary/20">
             <div className="relative w-32 h-32 mb-4">
               <svg className="w-full h-full transform -rotate-90">
                 <circle
@@ -158,16 +157,16 @@ export default function StatisticsPage() {
                   cy="64"
                   r="58"
                   stroke="currentColor"
-                  strokeWidth="8"
+                  strokeWidth="10"
                   fill="transparent"
-                  className="text-stone-100"
+                  className="text-stone-200"
                 />
                 <circle
                   cx="64"
                   cy="64"
                   r="58"
                   stroke="currentColor"
-                  strokeWidth="8"
+                  strokeWidth="10"
                   fill="transparent"
                   strokeDasharray={364.4}
                   strokeDashoffset={364.4 - (364.4 * progress) / 100}
@@ -190,7 +189,7 @@ export default function StatisticsPage() {
               <span>Goal Progress</span>
               <span>{completed} / {total}</span>
             </div>
-            <Progress value={progress} className="h-2" />
+            <Progress value={progress} className="h-2 bg-stone-100" />
           </div>
         </div>
       </Card>
@@ -214,7 +213,7 @@ export default function StatisticsPage() {
                     <span className="text-lg font-headline text-[#4A3F35]">{yearDoc.id} Growth</span>
                     <span className="text-xs text-muted-foreground">{completed}/{total} Achieved</span>
                   </div>
-                  <Progress value={progress} className="h-2" />
+                  <Progress value={progress} className="h-2 bg-stone-100" />
                   <p className="text-xs text-muted-foreground italic font-body">
                     {progress === 100 ? "Amazing! You've reached your vision." : `${Math.round(progress)}% of your yearly intentions completed.`}
                   </p>
@@ -245,7 +244,7 @@ export default function StatisticsPage() {
                   dataKey="value"
                 >
                   {moodData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" />
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -259,10 +258,10 @@ export default function StatisticsPage() {
           {moodData.map(m => (
             <div key={m.name} className="flex items-center justify-between text-sm font-body">
               <span className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
+                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: m.color }} />
                 {m.name}
               </span>
-              <span className="text-muted-foreground">{totalDays > 0 ? Math.round((m.value/totalDays)*100) : 0}%</span>
+              <span className="text-muted-foreground font-headline">{totalDays > 0 ? Math.round((m.value/totalDays)*100) : 0}%</span>
             </div>
           ))}
         </div>
@@ -275,15 +274,15 @@ export default function StatisticsPage() {
           <h2 className="text-xl font-headline text-[#4A3F35]">Habit Progress</h2>
         </div>
         <div className="space-y-6">
-          {habitStats.slice(0, 10).map((habit) => (
+          {habitStats.slice(0, 15).map((habit) => (
             <div key={habit.label} className="space-y-2">
               <div className="flex justify-between items-baseline">
                 <span className="text-sm font-body text-stone-700">{habit.label}</span>
                 <span className="text-xs font-headline text-stone-400">{habit.count} completions</span>
               </div>
-              <div className="relative h-2 w-full bg-stone-50 rounded-full overflow-hidden">
+              <div className="relative h-3 w-full bg-stone-100 rounded-full overflow-hidden">
                 <div 
-                  className="absolute inset-y-0 left-0 bg-primary-foreground/30 transition-all duration-1000" 
+                  className="absolute inset-y-0 left-0 bg-primary-foreground/60 transition-all duration-1000" 
                   style={{ width: `${habit.rate}%` }}
                 />
               </div>

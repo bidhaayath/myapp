@@ -21,6 +21,9 @@ service cloud.firestore {
       match /yearlyGoals/{yearId} {
         allow read, write: if isOwner(userId);
       }
+      match /settings/{settingId} {
+        allow read, write: if isOwner(userId);
+      }
     }
   }
 }

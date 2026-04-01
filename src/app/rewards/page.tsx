@@ -4,9 +4,10 @@
 import React from 'react';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Heart, Star, Award, Sparkles, Trophy, Flower } from 'lucide-react';
+import { ChevronLeft, Heart, Star, Award, Sparkles, Trophy, Flower, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BADGES } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -34,7 +35,21 @@ export default function RewardsPage() {
 
       {/* Collection Totals */}
       <div className="grid grid-cols-3 gap-3 mb-8">
-        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-red-50 text-center flex flex-col items-center">
+        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-red-50 text-center flex flex-col items-center relative">
+          <div className="absolute top-2 right-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="text-red-300 hover:text-red-500 transition-colors">
+                  <Info className="w-3.5 h-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
+                <p className="text-xs font-body text-stone-600 leading-relaxed">
+                  <span className="font-headline text-red-400">Hearts</span> are earned by completing more than <span className="font-bold text-stone-800">50%</span> of your daily habits.
+                </p>
+              </PopoverContent>
+            </Popover>
+          </div>
           <div className="bg-white p-2 rounded-full mb-2 shadow-sm animate-float">
             <Heart className="w-6 h-6 text-red-400 fill-current" />
           </div>
@@ -42,7 +57,21 @@ export default function RewardsPage() {
           <p className="text-[10px] uppercase tracking-widest text-red-400 font-headline">Hearts</p>
         </Card>
         
-        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-amber-50 text-center flex flex-col items-center">
+        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-amber-50 text-center flex flex-col items-center relative">
+          <div className="absolute top-2 right-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="text-amber-300 hover:text-amber-500 transition-colors">
+                  <Info className="w-3.5 h-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
+                <p className="text-xs font-body text-stone-600 leading-relaxed">
+                  <span className="font-headline text-amber-500">Stars</span> are earned when you write in more than <span className="font-bold text-stone-800">2</span> journal sections.
+                </p>
+              </PopoverContent>
+            </Popover>
+          </div>
           <div className="bg-white p-2 rounded-full mb-2 shadow-sm animate-float [animation-delay:0.2s]">
             <Star className="w-6 h-6 text-amber-500 fill-current" />
           </div>
@@ -50,7 +79,21 @@ export default function RewardsPage() {
           <p className="text-[10px] uppercase tracking-widest text-amber-500 font-headline">Stars</p>
         </Card>
 
-        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-emerald-50 text-center flex flex-col items-center">
+        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-emerald-50 text-center flex flex-col items-center relative">
+          <div className="absolute top-2 right-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="text-emerald-300 hover:text-emerald-500 transition-colors">
+                  <Info className="w-3.5 h-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
+                <p className="text-xs font-body text-stone-600 leading-relaxed">
+                  <span className="font-headline text-emerald-500">Petals</span> are earned every time you maintain a <span className="font-bold text-stone-800">3-day</span> continuous streak.
+                </p>
+              </PopoverContent>
+            </Popover>
+          </div>
           <div className="bg-white p-2 rounded-full mb-2 shadow-sm animate-float [animation-delay:0.4s]">
             <Flower className="w-6 h-6 text-emerald-500 fill-current" />
           </div>

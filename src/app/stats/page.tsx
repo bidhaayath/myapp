@@ -1,3 +1,4 @@
+
 "use client"
 
 import React from 'react';
@@ -192,7 +193,7 @@ export default function StatisticsPage() {
         </div>
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 mt-4">
           {moodData.map(m => (
-            <div key={m.name} className="flex items-center justify-between text-xs font-body">
+            <div key={m.name} className="flex items-center justify-between text-sm font-body">
               <span className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
                 {m.name}

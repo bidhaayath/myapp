@@ -56,7 +56,7 @@ export function ReflectionInput({ title, value, onChange, sectionType, placehold
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder || "Tap here to start writing..."}
-        className="min-h-[160px] resize-none bg-stone-50/50 border-none focus-visible:ring-1 focus-visible:ring-primary rounded-xl text-lg leading-relaxed shadow-inner"
+        className="min-h-[160px] resize-none bg-stone-200/30 border-none focus-visible:ring-1 focus-visible:ring-primary rounded-xl text-lg leading-relaxed shadow-inner"
       />
     </div>
   );

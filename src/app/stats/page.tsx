@@ -244,7 +244,7 @@ function StatisticsContent() {
       </div>
 
       {/* 1. Yearly Goals */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#D6B299] mb-8">
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#EAD9CC] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <Star className="w-6 h-6 text-primary-foreground" />
           <h2 className="text-xl font-headline text-[#4A3F35]">{selectedYearId} Vision</h2>

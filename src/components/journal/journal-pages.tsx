@@ -1,12 +1,12 @@
 
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { PageHeader } from './page-header';
 import { ReflectionInput } from './reflection-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { JournalEntry, MOODS, ChecklistItem, STICKER_OPTIONS } from '@/lib/types';
+import { JournalEntry, MOODS, ChecklistItem, STICKER_OPTIONS, DEFAULT_HABIT_GROUPS, ALL_DEFAULT_HABIT_LABELS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -63,6 +63,19 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
     setNewRoutineText('');
   };
 
+  const groupedHabits = useMemo(() => {
+    return [
+      ...DEFAULT_HABIT_GROUPS.map(group => ({
+        category: group.category,
+        items: entry.checklist.filter(item => group.items.includes(item.label))
+      })),
+      {
+        category: "Personal Routines",
+        items: entry.checklist.filter(item => !ALL_DEFAULT_HABIT_LABELS.includes(item.label))
+      }
+    ].filter(g => g.items.length > 0);
+  }, [entry.checklist]);
+
   return (
     <div className="flex flex-col h-full overflow-y-auto px-4 pb-32 pt-8">
       <PageHeader 
@@ -71,81 +84,89 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
         progress={{ current: completedCount, total: totalCount }}
       />
       
-      {/* 1. Global Routines (The core habits) */}
-      <div className="space-y-3 mb-8">
-        <div className="flex items-center justify-between ml-2 mb-2">
-          <h3 className="text-sm font-headline uppercase tracking-widest text-muted-foreground">Routines</h3>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setShowRoutineManager(!showRoutineManager)}
-            className="h-7 text-[10px] font-headline uppercase tracking-widest opacity-60 hover:opacity-100"
-          >
-            <Settings2 className="w-3 h-3 mr-1" />
-            {showRoutineManager ? "Hide Settings" : "Manage"}
-          </Button>
-        </div>
+      {/* Settings Toggle */}
+      <div className="flex items-center justify-between ml-2 mb-6">
+        <h3 className="text-sm font-headline uppercase tracking-widest text-muted-foreground">Routines</h3>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setShowRoutineManager(!showRoutineManager)}
+          className="h-7 text-[10px] font-headline uppercase tracking-widest opacity-60 hover:opacity-100"
+        >
+          <Settings2 className="w-3 h-3 mr-1" />
+          {showRoutineManager ? "Hide Settings" : "Manage"}
+        </Button>
+      </div>
 
-        {showRoutineManager && (
-          <div className="bg-stone-100/50 p-4 rounded-3xl mb-4 space-y-3 border border-stone-200/50 animate-in fade-in slide-in-from-top-2">
-            <p className="text-[10px] text-muted-foreground font-body italic mb-2">Items added here appear on all days.</p>
-            {globalRoutines.map(r => (
-              <div key={r.id} className="flex items-center gap-2">
-                {editingRoutineId === r.id ? (
-                  <Input 
-                    autoFocus
-                    defaultValue={r.label}
-                    onBlur={(e) => {
-                      editGlobalRoutine(r.id, e.target.value);
-                      setEditingRoutineId(null);
-                    }}
-                    className="flex-1 h-8 text-xs rounded-lg"
-                  />
-                ) : (
-                  <span className="flex-1 text-sm font-body">{r.label}</span>
+      {showRoutineManager && (
+        <div className="bg-stone-100/50 p-4 rounded-3xl mb-8 space-y-3 border border-stone-200/50 animate-in fade-in slide-in-from-top-2">
+          <p className="text-[10px] text-muted-foreground font-body italic mb-2">Custom routines added here appear on all days.</p>
+          {globalRoutines.map(r => (
+            <div key={r.id} className="flex items-center gap-2">
+              {editingRoutineId === r.id ? (
+                <Input 
+                  autoFocus
+                  defaultValue={r.label}
+                  onBlur={(e) => {
+                    editGlobalRoutine(r.id, e.target.value);
+                    setEditingRoutineId(null);
+                  }}
+                  className="flex-1 h-8 text-xs rounded-lg"
+                />
+              ) : (
+                <span className="flex-1 text-sm font-body">{r.label}</span>
+              )}
+              <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => setEditingRoutineId(r.id)}>
+                <Edit2 className="w-3 h-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="w-6 h-6 text-red-400" onClick={() => deleteGlobalRoutine(r.id)}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+          ))}
+          <div className="flex gap-2 pt-2 border-t border-stone-200">
+             <Input 
+              value={newRoutineText}
+              onChange={(e) => setNewRoutineText(e.target.value)}
+              placeholder="New habit name..."
+              className="h-8 text-xs rounded-lg"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddRoutine()}
+             />
+             <Button onClick={handleAddRoutine} size="icon" className="h-8 w-8 rounded-lg">
+               <Plus className="w-4 h-4" />
+             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Grouped Routines */}
+      <div className="space-y-8 mb-12">
+        {groupedHabits.map((group) => (
+          <div key={group.category} className="space-y-3">
+            <h4 className="text-[10px] font-headline uppercase tracking-[0.2em] text-muted-foreground/60 ml-2">
+              {group.category}
+            </h4>
+            {group.items.map((item) => (
+              <div 
+                key={item.label} 
+                className={cn(
+                  "flex items-center space-x-4 p-4 rounded-2xl transition-all duration-200 cursor-pointer",
+                  item.checked ? "bg-primary/10 opacity-60" : "bg-white border border-stone-100/50 shadow-sm"
                 )}
-                <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => setEditingRoutineId(r.id)}>
-                  <Edit2 className="w-3 h-3" />
-                </Button>
-                <Button variant="ghost" size="icon" className="w-6 h-6 text-red-400" onClick={() => deleteGlobalRoutine(r.id)}>
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+                onClick={() => toggleRoutine(item.label)}
+              >
+                <Checkbox checked={item.checked} className="w-6 h-6 rounded-lg border-[#E6D8CE]" />
+                <Label className={cn("flex-1 text-lg font-body", item.checked && "line-through")}>
+                  {item.label}
+                </Label>
               </div>
             ))}
-            <div className="flex gap-2 pt-2 border-t border-stone-200">
-               <Input 
-                value={newRoutineText}
-                onChange={(e) => setNewRoutineText(e.target.value)}
-                placeholder="New habit name..."
-                className="h-8 text-xs rounded-lg"
-                onKeyDown={(e) => e.key === 'Enter' && handleAddRoutine()}
-               />
-               <Button onClick={handleAddRoutine} size="icon" className="h-8 w-8 rounded-lg">
-                 <Plus className="w-4 h-4" />
-               </Button>
-            </div>
-          </div>
-        )}
-
-        {entry.checklist.map((item) => (
-          <div 
-            key={item.label} 
-            className={cn(
-              "flex items-center space-x-4 p-4 rounded-2xl transition-all duration-200 cursor-pointer",
-              item.checked ? "bg-primary/10 opacity-60" : "bg-white border border-stone-100/50 shadow-sm"
-            )}
-            onClick={() => toggleRoutine(item.label)}
-          >
-            <Checkbox checked={item.checked} className="w-6 h-6 rounded-lg border-[#E6D8CE]" />
-            <Label className={cn("flex-1 text-lg font-body", item.checked && "line-through")}>
-              {item.label}
-            </Label>
           </div>
         ))}
       </div>
 
-      {/* 2. Custom (One-off) Items for today */}
-      <div className="space-y-3 mb-8">
+      {/* Extra Today (One-off) */}
+      <div className="space-y-3 mb-12">
         <h3 className="text-sm font-headline uppercase tracking-widest text-muted-foreground ml-2">Extra Today</h3>
         {entry.customChecklist.map((item) => (
           <div 

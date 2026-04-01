@@ -42,31 +42,36 @@ export type Goal = {
   completed: boolean;
 };
 
-export const DEFAULT_CHECKLIST_ITEMS = [
-  "Dua",
-  "Plank",
-  "Facial exercise",
-  "Breathing exercise",
-  "Surat Mulk",
-  "Dhamu namaadh",
-  "Comb hair",
-  "Vacuum room",
-  "Wash bathroom",
-  "Fathis sunnat",
-  "Moringa tablet",
-  "Fish oil tablet",
-  "Rosemary spray"
+export const DEFAULT_HABIT_GROUPS = [
+  {
+    category: "Spiritual",
+    items: ["Dua", "Surat Baqara", "Surat Mulk", "Dhamu Namaadh", "Fathis sunnath"]
+  },
+  {
+    category: "Health & Fitness",
+    items: ["Chia seed", "Breathing exercise", "Facial exercise", "Squat", "Plank", "Jogging"]
+  },
+  {
+    category: "Personal Care",
+    items: ["Reendho facial", "Comb hair", "Spray rosemary water on hair", "Moringa tablet", "Vitamin D tablet"]
+  },
+  {
+    category: "Home Care",
+    items: ["Vacuum room", "Wash bathroom"]
+  }
 ];
 
+export const ALL_DEFAULT_HABIT_LABELS = DEFAULT_HABIT_GROUPS.flatMap(g => g.items);
+
 export const MOODS = [
-  { label: 'Happy', emoji: '😊', color: '#FBC02D', textColor: '#5D4037' },
-  { label: 'Calm', emoji: '😌', color: '#1976D2', textColor: '#FFFFFF' },
-  { label: 'Motivated', emoji: '✨', color: '#388E3C', textColor: '#FFFFFF' },
-  { label: 'Tired', emoji: '🥱', color: '#616161', textColor: '#FFFFFF' },
-  { label: 'Sad', emoji: '😔', color: '#7B1FA2', textColor: '#FFFFFF' },
-  { label: 'Anxious', emoji: '😟', color: '#F57C00', textColor: '#FFFFFF' },
-  { label: 'Stressed', emoji: '😫', color: '#D32F2F', textColor: '#FFFFFF' },
-  { label: 'Peaceful', emoji: '🕊️', color: '#00796B', textColor: '#FFFFFF' },
+  { label: 'Happy', emoji: '😊', color: '#E6B800', textColor: '#FFFFFF' },
+  { label: 'Calm', emoji: '😌', color: '#10569B', textColor: '#FFFFFF' },
+  { label: 'Motivated', emoji: '✨', color: '#266529', textColor: '#FFFFFF' },
+  { label: 'Tired', emoji: '🥱', color: '#424242', textColor: '#FFFFFF' },
+  { label: 'Sad', emoji: '😔', color: '#5B1778', textColor: '#FFFFFF' },
+  { label: 'Anxious', emoji: '😟', color: '#B75D00', textColor: '#FFFFFF' },
+  { label: 'Stressed', emoji: '😫', color: '#991B1B', textColor: '#FFFFFF' },
+  { label: 'Peaceful', emoji: '🕊️', color: '#005D52', textColor: '#FFFFFF' },
 ];
 
 export const STICKER_OPTIONS = ['🌸', '✨', '⭐', '🌙', '☁️', '🌿', '💡', '❤️', '🔥', '🌈', '🦋', '🍀'];

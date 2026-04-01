@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Calendar, Smile, Award, CheckCircle2, Target, Star, TrendingUp } from 'lucide-react';
-import { MOODS, DEFAULT_CHECKLIST_ITEMS, Goal } from '@/lib/types';
+import { MOODS, ALL_DEFAULT_HABIT_LABELS, Goal } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,7 +41,7 @@ function StatisticsContent() {
 
   // Dynamic set of habits to track
   const activeHabitLabels = useMemo(() => {
-    return [...DEFAULT_CHECKLIST_ITEMS, ...globalRoutines.map(r => r.label)];
+    return [...ALL_DEFAULT_HABIT_LABELS, ...globalRoutines.map(r => r.label)];
   }, [globalRoutines]);
 
   // Fetch monthly goals collection
@@ -243,7 +243,8 @@ function StatisticsContent() {
         </Card>
       </div>
 
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#E6D8CE] mb-8">
+      {/* 1. Yearly Goals */}
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#D6B299] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <Star className="w-6 h-6 text-primary-foreground" />
           <h2 className="text-xl font-headline text-[#4A3F35]">{selectedYearId} Vision</h2>
@@ -254,14 +255,15 @@ function StatisticsContent() {
             <span>{completedYearlyGoals} / {totalYearlyGoals}</span>
           </div>
           <Progress value={yearlyGoalProgress} className="h-3 bg-white/40" />
-          <p className="text-xs text-stone-700 font-body italic mt-2">
+          <p className="text-xs text-stone-800 font-body italic mt-2">
             You've completed {Math.round(yearlyGoalProgress)}% of your yearly objectives.
           </p>
         </div>
       </Card>
 
+      {/* 2. Monthly Goals (Only for month view) */}
       {!isYearlyView && (
-        <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5E6E6] mb-8">
+        <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#E6D8CE] mb-8">
           <div className="flex items-center gap-3 mb-6">
             <Target className="w-6 h-6 text-secondary-foreground" />
             <h2 className="text-xl font-headline text-[#4A3F35]">Monthly Intentions</h2>
@@ -287,7 +289,8 @@ function StatisticsContent() {
         </Card>
       )}
 
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F2EDE9] mb-8 overflow-hidden">
+      {/* 3. Mood */}
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5E6E6] mb-8 overflow-hidden">
         <div className="flex items-center gap-3 mb-6">
           <Smile className="w-6 h-6 text-[#4A3F35]" />
           <h2 className="text-xl font-headline text-[#4A3F35]">Mood Landscape</h2>
@@ -321,6 +324,7 @@ function StatisticsContent() {
         </div>
       </Card>
 
+      {/* 4. Habit Mastery */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-6 px-2">
           <CheckCircle2 className="w-6 h-6 text-primary-foreground" />
@@ -360,7 +364,8 @@ function StatisticsContent() {
         </div>
       </div>
 
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#E6D8CE] mb-8">
+      {/* 5. Habit Momentum */}
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#D8C7B8] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <TrendingUp className="w-6 h-6 text-primary-foreground" />
           <h2 className="text-xl font-headline text-[#4A3F35]">Habit Momentum</h2>
@@ -376,7 +381,7 @@ function StatisticsContent() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <p className="text-xs text-center text-stone-700 mt-6 font-body italic">
+        <p className="text-xs text-center text-stone-800 mt-6 font-body italic">
           Overall checklist completion for {isYearlyView ? selectedMonthId : format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'MMMM yyyy')}
         </p>
       </Card>

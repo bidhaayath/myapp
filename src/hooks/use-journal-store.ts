@@ -4,7 +4,7 @@
 import { useMemo } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
-import { JournalEntry, DEFAULT_CHECKLIST_ITEMS, Goal, Routine } from '@/lib/types';
+import { JournalEntry, ALL_DEFAULT_HABIT_LABELS, Goal, Routine } from '@/lib/types';
 import { format, startOfMonth, subDays } from 'date-fns';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -59,7 +59,7 @@ export function useJournalStore() {
     const existing = entries[date];
     
     // The "Full List" of routine labels active TODAY
-    const routineLabels = [...DEFAULT_CHECKLIST_ITEMS, ...globalRoutines.map(r => r.label)];
+    const routineLabels = [...ALL_DEFAULT_HABIT_LABELS, ...globalRoutines.map(r => r.label)];
     
     const baseChecklist = routineLabels.map((label, index) => {
       const existingItem = existing?.checklist?.find(i => i.label === label);

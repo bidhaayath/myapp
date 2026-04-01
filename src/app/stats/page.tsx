@@ -44,10 +44,30 @@ function StatisticsContent() {
   }, [user, firestore]);
   const { data: allMonthlyGoals } = useCollection<{ goals: Goal[] }>(monthlyGoalsRef);
 
+  // Fetch yearly goals collection
+  const yearlyGoalsRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, 'users', user.uid, 'yearlyGoals');
+  }, [user, firestore]);
+  const { data: allYearlyGoals } = useCollection<{ goals: Goal[] }>(yearlyGoalsRef);
+
   const selectedMonthData = useMemo(() => {
     if (!allMonthlyGoals) return null;
     return allMonthlyGoals.find(m => m.id === selectedMonthId);
   }, [allMonthlyGoals, selectedMonthId]);
+
+  const selectedYearId = useMemo(() => {
+    try {
+      return format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'yyyy');
+    } catch {
+      return format(new Date(), 'yyyy');
+    }
+  }, [selectedMonthId]);
+
+  const selectedYearData = useMemo(() => {
+    if (!allYearlyGoals) return null;
+    return allYearlyGoals.find(y => y.id === selectedYearId);
+  }, [allYearlyGoals, selectedYearId]);
 
   const availableMonths = useMemo(() => {
     const months: string[] = [];
@@ -137,6 +157,11 @@ function StatisticsContent() {
   const totalGoals = goals.length;
   const goalProgress = totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
 
+  const yearlyGoals = selectedYearData?.goals || [];
+  const completedYearlyGoals = yearlyGoals.filter(g => g.completed).length;
+  const totalYearlyGoals = yearlyGoals.length;
+  const yearlyGoalProgress = totalYearlyGoals > 0 ? (completedYearlyGoals / totalYearlyGoals) * 100 : 0;
+
   return (
     <div className="min-h-screen bg-[#FCFAFA] px-6 pt-12 pb-24">
       <header className="flex items-center justify-between mb-8">
@@ -168,7 +193,6 @@ function StatisticsContent() {
         </Select>
       </div>
 
-      {/* Core Stats Overview */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-primary/40 text-center">
           <Calendar className="w-6 h-6 mx-auto mb-2 text-primary-foreground" />
@@ -182,46 +206,25 @@ function StatisticsContent() {
         </Card>
       </div>
 
-      {/* Total Habit Progress Chart - MOMENTUM */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F2E6DA] mb-8">
+      {/* 1. Yearly Goals */}
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#E6D8CE44] mb-8">
         <div className="flex items-center gap-3 mb-6">
-          <TrendingUp className="w-6 h-6 text-primary-foreground" />
-          <h2 className="text-xl font-headline text-[#4A3F35]">Habit Momentum</h2>
+          <Star className="w-6 h-6 text-primary-foreground" />
+          <h2 className="text-xl font-headline text-[#4A3F35]">{selectedYearId} Vision</h2>
         </div>
-        <div className="h-48 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={monthStats}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d7c4b5" />
-              <XAxis 
-                dataKey="dayNum" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fontSize: 10, fill: '#8D7B6D'}} 
-                interval={4}
-              />
-              <YAxis hide domain={[0, 100]} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', backgroundColor: '#fff' }}
-                labelStyle={{ fontWeight: 'bold', color: '#4A3F35' }}
-                formatter={(value: number) => [`${Math.round(value)}%`, 'Completion']}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="completionRate" 
-                stroke="#4A3F35" 
-                strokeWidth={3} 
-                dot={{ r: 3, fill: '#4A3F35' }} 
-                activeDot={{ r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="space-y-4">
+          <div className="flex justify-between text-[10px] font-headline uppercase tracking-widest text-stone-500">
+            <span>Overall Growth</span>
+            <span>{completedYearlyGoals} / {totalYearlyGoals}</span>
+          </div>
+          <Progress value={yearlyGoalProgress} className="h-3 bg-stone-200" />
+          <p className="text-xs text-stone-600 font-body italic mt-2">
+            You've completed {Math.round(yearlyGoalProgress)}% of your yearly objectives.
+          </p>
         </div>
-        <p className="text-xs text-center text-stone-600 mt-4 font-body italic">
-          Overall checklist completion for {format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'MMMM yyyy')}
-        </p>
       </Card>
 
-      {/* Monthly Goals Insights */}
+      {/* 2. Monthly Goals */}
       <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F9F1E7] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <Target className="w-6 h-6 text-secondary-foreground" />
@@ -274,7 +277,50 @@ function StatisticsContent() {
         </div>
       </Card>
 
-      {/* Individual Habit Mastery Tracker - Compact Grid */}
+      {/* 3. Mood */}
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5EBE0] mb-8 overflow-hidden">
+        <div className="flex items-center gap-3 mb-6">
+          <Smile className="w-6 h-6 text-primary-foreground" />
+          <h2 className="text-xl font-headline text-[#4A3F35]">Mood Landscape</h2>
+        </div>
+        <div className="h-64 w-full">
+          {moodData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <RePieChart>
+                <Pie
+                  data={moodData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {moodData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </RePieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center italic text-stone-500 font-body">Log your moods to see insights</div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 mt-4">
+          {moodData.map(m => (
+            <div key={m.name} className="flex items-center justify-between text-sm font-body">
+              <span className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: m.color }} />
+                {m.name}
+              </span>
+              <span className="text-stone-600 font-headline">{totalDays > 0 ? Math.round((m.value/totalDays)*100) : 0}%</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* 4. Habits */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-6 px-2">
           <CheckCircle2 className="w-6 h-6 text-primary-foreground" />
@@ -324,47 +370,43 @@ function StatisticsContent() {
         </div>
       </div>
 
-      {/* Mood Distribution */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5EBE0] mb-8 overflow-hidden">
+      {/* 5. Habit Momentum */}
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F2E6DA] mb-8">
         <div className="flex items-center gap-3 mb-6">
-          <Smile className="w-6 h-6 text-primary-foreground" />
-          <h2 className="text-xl font-headline text-[#4A3F35]">Mood Landscape</h2>
+          <TrendingUp className="w-6 h-6 text-primary-foreground" />
+          <h2 className="text-xl font-headline text-[#4A3F35]">Habit Momentum</h2>
         </div>
-        <div className="h-64 w-full">
-          {moodData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <RePieChart>
-                <Pie
-                  data={moodData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {moodData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </RePieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-full flex items-center justify-center italic text-stone-500 font-body">Log your moods to see insights</div>
-          )}
+        <div className="h-48 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={monthStats}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d7c4b5" />
+              <XAxis 
+                dataKey="dayNum" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fontSize: 10, fill: '#8D7B6D'}} 
+                interval={4}
+              />
+              <YAxis hide domain={[0, 100]} />
+              <Tooltip 
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', backgroundColor: '#fff' }}
+                labelStyle={{ fontWeight: 'bold', color: '#4A3F35' }}
+                formatter={(value: number) => [`${Math.round(value)}%`, 'Completion']}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="completionRate" 
+                stroke="#4A3F35" 
+                strokeWidth={3} 
+                dot={{ r: 3, fill: '#4A3F35' }} 
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 mt-4">
-          {moodData.map(m => (
-            <div key={m.name} className="flex items-center justify-between text-sm font-body">
-              <span className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: m.color }} />
-                {m.name}
-              </span>
-              <span className="text-stone-600 font-headline">{totalDays > 0 ? Math.round((m.value/totalDays)*100) : 0}%</span>
-            </div>
-          ))}
-        </div>
+        <p className="text-xs text-center text-stone-600 mt-4 font-body italic">
+          Overall checklist completion for {format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'MMMM yyyy')}
+        </p>
       </Card>
 
       <p className="text-center text-stone-400 italic font-body text-sm mt-8">

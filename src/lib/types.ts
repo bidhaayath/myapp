@@ -70,6 +70,7 @@ export const MOODS = [
   { label: 'Sad', emoji: '😔', color: '#5B1778', textColor: '#FFFFFF' },
   { label: 'Anxious', emoji: '😟', color: '#B75D00', textColor: '#FFFFFF' },
   { label: 'Stressed', emoji: '😫', color: '#991B1B', textColor: '#FFFFFF' },
+  { label: 'Angry', emoji: '😠', color: '#DC2626', textColor: '#FFFFFF' },
   { label: 'Peaceful', emoji: '🕊️', color: '#005D52', textColor: '#FFFFFF' },
 ];
 

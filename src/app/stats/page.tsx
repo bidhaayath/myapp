@@ -44,13 +44,6 @@ function StatisticsContent() {
   }, [user, firestore]);
   const { data: allMonthlyGoals } = useCollection<{ goals: Goal[] }>(monthlyGoalsRef);
 
-  // Fetch yearly goals collection
-  const yearlyGoalsRef = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return collection(firestore, 'users', user.uid, 'yearlyGoals');
-  }, [user, firestore]);
-  const { data: allYearlyGoals } = useCollection<{ goals: Goal[] }>(yearlyGoalsRef);
-
   const selectedMonthData = useMemo(() => {
     if (!allMonthlyGoals) return null;
     return allMonthlyGoals.find(m => m.id === selectedMonthId);
@@ -301,10 +294,17 @@ function StatisticsContent() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthStats}>
                     <YAxis hide domain={[0, 1.2]} />
-                    <XAxis hide dataKey="dayNum" />
+                    <XAxis 
+                      dataKey="dayNum" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{fontSize: 8, fill: '#8D7B6D'}} 
+                      interval={4}
+                    />
                     <Tooltip 
                       contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '10px' }}
                       cursor={{ fill: 'rgba(74, 63, 53, 0.05)' }}
+                      labelFormatter={(label) => `Day ${label}`}
                       formatter={(value: number) => [value === 1 ? 'Done' : 'Missed', 'Status']}
                     />
                     <Bar 

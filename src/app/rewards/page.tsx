@@ -6,11 +6,9 @@ import { useJournalStore } from '@/hooks/use-journal-store';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Heart, Star, Award, Sparkles, Trophy, Flower, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BADGES } from '@/lib/types';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 
 export default function RewardsPage() {
   const { stats, isLoaded, getStreak } = useJournalStore();
@@ -29,27 +27,36 @@ export default function RewardsPage() {
             <ChevronLeft className="w-6 h-6" />
           </Button>
         </Link>
-        <h1 className="text-3xl font-headline text-[#4A3F35]">Rewards</h1>
-        <div className="w-10" />
+        <h1 className="text-3xl font-headline text-[#4A3F35]">Rewards Gallery</h1>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <Info className="w-5 h-5 text-muted-foreground" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-5 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl z-[100]">
+            <h4 className="font-headline text-[#4A3F35] mb-3">Reward Rules</h4>
+            <div className="space-y-4 text-xs font-body text-stone-600 leading-relaxed">
+              <div className="space-y-1">
+                <p className="font-headline text-red-400 uppercase tracking-wider">Hearts (Habits)</p>
+                <p>1 for ≥50% completion, 2 for 100% per day.</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-headline text-amber-500 uppercase tracking-wider">Stars (Journaling)</p>
+                <p>1 for ≥2 sections, 2 for all 5 sections per day.</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-headline text-emerald-500 uppercase tracking-wider">Petals (Streaks)</p>
+                <p>Awarded for continuous active days: 1 at day 3, 3 at day 7, 10 at day 30.</p>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       </header>
 
       {/* Collection Totals */}
       <div className="grid grid-cols-3 gap-3 mb-8">
-        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-red-50 text-center flex flex-col items-center relative">
-          <div className="absolute top-2 right-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="text-red-300 hover:text-red-500 transition-colors">
-                  <Info className="w-3.5 h-3.5" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
-                <p className="text-xs font-body text-stone-600 leading-relaxed">
-                  <span className="font-headline text-red-400">Hearts</span> are earned when you complete <span className="font-bold text-stone-800">more than 50%</span> of your daily habits from total habits.
-                </p>
-              </PopoverContent>
-            </Popover>
-          </div>
+        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-red-50 text-center flex flex-col items-center">
           <div className="bg-white p-2 rounded-full mb-2 shadow-sm animate-float">
             <Heart className="w-6 h-6 text-red-400 fill-current" />
           </div>
@@ -57,21 +64,7 @@ export default function RewardsPage() {
           <p className="text-[10px] uppercase tracking-widest text-red-400 font-headline">Hearts</p>
         </Card>
         
-        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-amber-50 text-center flex flex-col items-center relative">
-          <div className="absolute top-2 right-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="text-amber-300 hover:text-amber-500 transition-colors">
-                  <Info className="w-3.5 h-3.5" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
-                <p className="text-xs font-body text-stone-600 leading-relaxed">
-                  <span className="font-headline text-amber-500">Stars</span> are earned when you write in more than <span className="font-bold text-stone-800">2</span> journal sections each day.
-                </p>
-              </PopoverContent>
-            </Popover>
-          </div>
+        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-amber-50 text-center flex flex-col items-center">
           <div className="bg-white p-2 rounded-full mb-2 shadow-sm animate-float [animation-delay:0.2s]">
             <Star className="w-6 h-6 text-amber-500 fill-current" />
           </div>
@@ -79,21 +72,7 @@ export default function RewardsPage() {
           <p className="text-[10px] uppercase tracking-widest text-amber-500 font-headline">Stars</p>
         </Card>
 
-        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-emerald-50 text-center flex flex-col items-center relative">
-          <div className="absolute top-2 right-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="text-emerald-300 hover:text-emerald-500 transition-colors">
-                  <Info className="w-3.5 h-3.5" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
-                <p className="text-xs font-body text-stone-600 leading-relaxed">
-                  <span className="font-headline text-emerald-500">Petals</span> are earned every time you maintain a continuous <span className="font-bold text-stone-800">3-day</span> streak.
-                </p>
-              </PopoverContent>
-            </Popover>
-          </div>
+        <Card className="p-4 rounded-[2rem] border-none shadow-sm bg-emerald-50 text-center flex flex-col items-center">
           <div className="bg-white p-2 rounded-full mb-2 shadow-sm animate-float [animation-delay:0.4s]">
             <Flower className="w-6 h-6 text-emerald-500 fill-current" />
           </div>
@@ -105,8 +84,8 @@ export default function RewardsPage() {
       {/* Streak Info */}
       <div className="bg-[#F2E6DA] p-8 rounded-[2.5rem] mb-12 relative overflow-hidden shadow-sm">
         <Sparkles className="absolute top-4 right-4 w-12 h-12 text-white/50" />
-        <p className="text-sm font-headline uppercase tracking-widest text-[#4A3F35]/60 mb-1">Consistency</p>
-        <h2 className="text-4xl font-headline text-[#4A3F35] mb-4">{streak} Day Streak</h2>
+        <p className="text-sm font-headline uppercase tracking-widest text-[#4A3F35]/60 mb-1">Current Streak</p>
+        <h2 className="text-4xl font-headline text-[#4A3F35] mb-4">{streak} Days</h2>
         <p className="text-sm font-body text-[#4A3F35]/80 italic">"Like a garden, consistency helps you bloom."</p>
       </div>
 

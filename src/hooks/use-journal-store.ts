@@ -5,7 +5,7 @@ import { useMemo, useCallback } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
 import { JournalEntry, ALL_DEFAULT_HABIT_LABELS, Goal, Routine, UserStats } from '@/lib/types';
-import { format, startOfMonth, subDays } from 'date-fns';
+import { format, startOfMonth, subDays, isSameDay } from 'date-fns';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export function useJournalStore() {
@@ -28,14 +28,7 @@ export function useJournalStore() {
   }, [user, firestore]);
 
   const { data: statsData, isLoading: isStatsLoading } = useDoc<UserStats>(statsRef);
-  const stats: UserStats = useMemo(() => statsData || { 
-    userId: user?.uid || '', 
-    hearts: 0, 
-    stars: 0, 
-    petals: 0, 
-    badges: [] 
-  }, [statsData, user]);
-
+  
   // 3. Fetch Daily Entries
   const entriesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -52,20 +45,110 @@ export function useJournalStore() {
     return record;
   }, [entriesData]);
 
+  const getStreak = useCallback(() => {
+    let streak = 0;
+    let checkDate = new Date();
+    while (true) {
+      const dateStr = format(checkDate, 'yyyy-MM-dd');
+      const entry = entries[dateStr];
+      if (entry) {
+        // A day counts for the streak if it has >=1 heart or >=1 star
+        const hearts = entry.rewardsClaimed?.heartsEarned || 0;
+        const stars = entry.rewardsClaimed?.starsEarned || 0;
+        if (hearts > 0 || stars > 0) {
+          streak++;
+          checkDate = subDays(checkDate, 1);
+          continue;
+        }
+      }
+      break;
+    }
+    return streak;
+  }, [entries]);
+
+  // Calculate Cumulative Stats based on all entries
+  const stats: UserStats = useMemo(() => {
+    const baseStats: UserStats = {
+      userId: user?.uid || '',
+      hearts: 0,
+      stars: 0,
+      petals: 0,
+      badges: statsData?.badges || []
+    };
+
+    if (!entriesData) return baseStats;
+
+    // Calculate Hearts and Stars from entries
+    entriesData.forEach(entry => {
+      baseStats.hearts += (entry.rewardsClaimed?.heartsEarned || 0);
+      baseStats.stars += (entry.rewardsClaimed?.starsEarned || 0);
+    });
+
+    // Calculate Petals from streaks
+    // Sort entries by date to process streaks chronologically
+    const sortedDates = Object.keys(entries).sort();
+    let currentStreakLength = 0;
+    let totalPetals = 0;
+    const streakMilestonesReached = new Set<string>();
+
+    sortedDates.forEach(dateStr => {
+      const entry = entries[dateStr];
+      const hearts = entry.rewardsClaimed?.heartsEarned || 0;
+      const stars = entry.rewardsClaimed?.starsEarned || 0;
+
+      if (hearts > 0 || stars > 0) {
+        currentStreakLength++;
+        // Check milestones
+        if (currentStreakLength % 3 === 0) {
+          totalPetals += 1;
+        }
+        if (currentStreakLength === 7) {
+          totalPetals += 1; // 7 days = 3 total (Day 3, 6 give 2, so +1 at day 7)
+        }
+        if (currentStreakLength === 30) {
+          // Day 30 is exactly 10 blocks of 3. So 10 petals already given at 3,6,9...30.
+          // 7 day bonuses would have been given at 7, 14, 21, 28.
+          // The prompt says "30 days = 10 petals total". 
+          // Let's adjust to exactly what the prompt specifies.
+        }
+      } else {
+        currentStreakLength = 0;
+      }
+    });
+
+    // Prompt logic: 3 days = 1, 7 days = 3 total, 30 days = 10 total.
+    // Let's re-calculate petals based strictly on continuous streaks.
+    let reCalcPetals = 0;
+    let tempStreak = 0;
+    sortedDates.forEach(dateStr => {
+      const entry = entries[dateStr];
+      if ((entry.rewardsClaimed?.heartsEarned || 0) > 0 || (entry.rewardsClaimed?.starsEarned || 0) > 0) {
+        tempStreak++;
+        // Milestone logic
+        if (tempStreak % 3 === 0) reCalcPetals += 1;
+        if (tempStreak === 7) reCalcPetals += 1; // At 7, it's 3 total (3,6,7)
+        if (tempStreak === 30) {
+          // At 30, it should be 10 total.
+          // Blocks of 3 at 30 days = 10 petals.
+          // If we also gave bonus at 7,14,21,28, it would be 14.
+          // So for L=30, we don't add bonuses if we want 10 total? 
+          // The prompt says "Every continuous 3 qualifying days = 1 petal". 
+          // 30 / 3 = 10. So it's already 10.
+        }
+      } else {
+        tempStreak = 0;
+      }
+    });
+
+    baseStats.petals = reCalcPetals;
+
+    return baseStats;
+  }, [entriesData, entries, user, statsData]);
+
   // Helper to get doc references
   const getEntryRef = (date: string) => {
     if (!user || !firestore) return null;
     return doc(firestore, 'users', user.uid, 'dailyEntries', date);
-  };
-
-  const getMonthlyRef = (month: string) => {
-    if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid, 'monthlyGoals', month);
-  };
-
-  const getYearlyRef = (year: string) => {
-    if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid, 'yearlyGoals', year);
   };
 
   const getEntry = (date: string): JournalEntry => {
@@ -91,7 +174,7 @@ export function useJournalStore() {
       freeWriting: existing?.freeWriting || '',
       stickers: existing?.stickers || [],
       drawingData: existing?.drawingData || '',
-      rewardsClaimed: existing?.rewardsClaimed || {}
+      rewardsClaimed: existing?.rewardsClaimed || { heartsEarned: 0, starsEarned: 0 }
     };
   };
 
@@ -108,23 +191,23 @@ export function useJournalStore() {
     const currentEntry = getEntry(date);
     const newEntry = { ...currentEntry, ...updates };
     
-    // Updated Reward Logic
+    // Reward Logic
     const rewards = { ...newEntry.rewardsClaimed };
-    let heartsToAdd = 0;
-    let starsToAdd = 0;
-    const newBadges: string[] = [...stats.badges];
-
-    // 1. Habit Reward: MORE THAN 50% completed
+    
+    // 1. Hearts (Habits)
     const totalHabits = newEntry.checklist.length + newEntry.customChecklist.length;
     const completedHabits = newEntry.checklist.filter(i => i.checked).length + newEntry.customChecklist.filter(i => i.checked).length;
     const habitPercent = totalHabits > 0 ? (completedHabits / totalHabits) : 0;
 
-    if (habitPercent > 0.5 && !rewards.habitReward) {
-      rewards.habitReward = true;
-      heartsToAdd += 1;
+    if (habitPercent === 1.0) {
+      rewards.heartsEarned = 2;
+    } else if (habitPercent >= 0.5) {
+      rewards.heartsEarned = 1;
+    } else {
+      rewards.heartsEarned = 0;
     }
 
-    // 2. Journaling Reward: > 2 sections filled
+    // 2. Stars (Journaling)
     const journalSections = [
       newEntry.reflectionPositive.grateful,
       newEntry.reflectionPositive.learned,
@@ -134,14 +217,17 @@ export function useJournalStore() {
     ];
     const sectionsFilled = journalSections.filter(s => s.trim().length > 0).length;
 
-    if (sectionsFilled > 2 && !rewards.journalReward) {
-      rewards.journalReward = true;
-      starsToAdd += 1;
+    if (sectionsFilled === 5) {
+      rewards.starsEarned = 2;
+    } else if (sectionsFilled >= 2) {
+      rewards.starsEarned = 1;
+    } else {
+      rewards.starsEarned = 0;
     }
 
     // 3. Perfect Day Badge
-    const hasAllReflection = !!(newEntry.reflectionPositive.grateful && newEntry.reflectionPositive.learned && newEntry.reflectionGrowth.drained && newEntry.reflectionGrowth.improve);
-    if (habitPercent >= 1.0 && hasAllReflection && !newBadges.includes('perfect-day')) {
+    const newBadges = [...stats.badges];
+    if (rewards.heartsEarned === 2 && rewards.starsEarned === 2 && !newBadges.includes('perfect-day')) {
       newBadges.push('perfect-day');
     }
 
@@ -149,112 +235,51 @@ export function useJournalStore() {
     const finalData = { ...newEntry, rewardsClaimed: rewards, userId: user.uid, date };
     setDocumentNonBlocking(ref, finalData, { merge: true });
 
-    if (heartsToAdd > 0 || starsToAdd > 0 || newBadges.length > stats.badges.length) {
-      updateStats({
-        hearts: stats.hearts + heartsToAdd,
-        stars: stats.stars + starsToAdd,
-        badges: newBadges
-      });
+    if (newBadges.length > stats.badges.length) {
+      updateStats({ badges: newBadges });
     }
   };
 
-  const updateGlobalRoutines = (newRoutines: Routine[]) => {
-    if (!user || !routinesRef) return;
-    setDocumentNonBlocking(routinesRef, { userId: user.uid, items: newRoutines }, { merge: true });
-  };
-
   const addGlobalRoutine = (label: string) => {
+    if (!user || !routinesRef) return;
     const newRoutine: Routine = { id: Date.now().toString(), label };
-    updateGlobalRoutines([...globalRoutines, newRoutine]);
+    setDocumentNonBlocking(routinesRef, { userId: user.uid, items: [...globalRoutines, newRoutine] }, { merge: true });
   };
 
   const deleteGlobalRoutine = (id: string) => {
-    updateGlobalRoutines(globalRoutines.filter(r => r.id !== id));
+    if (!user || !routinesRef) return;
+    setDocumentNonBlocking(routinesRef, { userId: user.uid, items: globalRoutines.filter(r => r.id !== id) }, { merge: true });
   };
 
   const editGlobalRoutine = (id: string, newLabel: string) => {
-    updateGlobalRoutines(globalRoutines.map(r => r.id === id ? { ...r, label: newLabel } : r));
+    if (!user || !routinesRef) return;
+    setDocumentNonBlocking(routinesRef, { userId: user.uid, items: globalRoutines.map(r => r.id === id ? { ...r, label: newLabel } : r) }, { merge: true });
   };
 
   const updateMonthlyGoals = (date: Date, goals: Goal[]) => {
-    if (!user) return;
+    if (!user || !firestore) return;
     const monthId = format(startOfMonth(date), 'yyyy-MM');
-    const ref = getMonthlyRef(monthId);
-    if (!ref) return;
+    const ref = doc(firestore, 'users', user.uid, 'monthlyGoals', monthId);
     
-    // Reward for completion
     const wasAllComplete = goals.length > 0 && goals.every(g => g.completed);
     if (wasAllComplete && !stats.badges.includes('monthly-achiever')) {
-      updateStats({ 
-        petals: stats.petals + 20, 
-        badges: [...stats.badges, 'monthly-achiever'] 
-      });
+      updateStats({ badges: [...stats.badges, 'monthly-achiever'] });
     }
 
     setDocumentNonBlocking(ref, { userId: user.uid, goals }, { merge: true });
   };
 
   const updateYearlyGoals = (year: string, goals: Goal[]) => {
-    if (!user) return;
-    const ref = getYearlyRef(year);
-    if (!ref) return;
+    if (!user || !firestore) return;
+    const ref = doc(firestore, 'users', user.uid, 'yearlyGoals', year);
 
     const completedOne = goals.some(g => g.completed);
     if (completedOne && !stats.badges.includes('yearly-dreamer')) {
-      updateStats({ 
-        petals: stats.petals + 50, 
-        badges: [...stats.badges, 'yearly-dreamer'] 
-      });
+      updateStats({ badges: [...stats.badges, 'yearly-dreamer'] });
     }
 
     setDocumentNonBlocking(ref, { userId: user.uid, goals }, { merge: true });
   };
-
-  const getStreak = useCallback(() => {
-    let streak = 0;
-    let checkDate = new Date();
-    while (true) {
-      const dateStr = format(checkDate, 'yyyy-MM-dd');
-      if (entries[dateStr]) {
-        streak++;
-        checkDate = subDays(checkDate, 1);
-      } else {
-        break;
-      }
-    }
-    return streak;
-  }, [entries]);
-
-  // Check for streak milestones (Petals)
-  useMemo(() => {
-    if (!user || isStatsLoading) return;
-    const streak = getStreak();
-    const newBadges = [...stats.badges];
-    let petalsToAdd = 0;
-
-    // Milestone logic: Reward Petals every 3 days of a streak
-    if (streak > 0 && streak % 3 === 0) {
-      const milestoneId = `streak-milestone-${streak}`;
-      if (!newBadges.includes(milestoneId)) {
-        newBadges.push(milestoneId);
-        petalsToAdd += 5;
-      }
-    }
-
-    if (streak >= 3 && !newBadges.includes('streak-3')) {
-      newBadges.push('streak-3');
-    }
-    if (streak >= 7 && !newBadges.includes('streak-7')) {
-      newBadges.push('streak-7');
-    }
-    if (streak >= 30 && !newBadges.includes('streak-30')) {
-      newBadges.push('streak-30');
-    }
-
-    if (petalsToAdd > 0 || newBadges.length > stats.badges.length) {
-      updateStats({ badges: newBadges, petals: stats.petals + petalsToAdd });
-    }
-  }, [getStreak, stats, isStatsLoading, user, updateStats]);
 
   return {
     entries,

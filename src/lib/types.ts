@@ -19,9 +19,8 @@ export type Sticker = {
 };
 
 export type DailyRewardsClaimed = {
-  habitReward?: boolean;   // > 50% habits
-  journalReward?: boolean; // > 2 sections
-  streakReward?: boolean;  // 3-day milestone
+  heartsEarned?: number; // 0, 1, or 2
+  starsEarned?: number;  // 0, 1, or 2
 };
 
 export type JournalEntry = {
@@ -51,9 +50,9 @@ export type Goal = {
 
 export type UserStats = {
   userId: string;
-  hearts: number; // From habits
-  stars: number;  // From journaling
-  petals: number; // From streaks
+  hearts: number; // Cumulative total
+  stars: number;  // Cumulative total
+  petals: number; // Cumulative total
   badges: string[];
 };
 

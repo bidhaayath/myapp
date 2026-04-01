@@ -47,7 +47,7 @@ function Dashboard() {
   const streak = getStreak();
   const todayDateStr = format(new Date(), 'yyyy-MM-dd');
   const todayEntry = entries[todayDateStr];
-  const todayRewards = todayEntry?.rewardsClaimed || {};
+  const todayRewards = todayEntry?.rewardsClaimed || { heartsEarned: 0, starsEarned: 0 };
 
   if (isJournalOpen) {
     return (
@@ -61,7 +61,6 @@ function Dashboard() {
 
   const currentMonthId = format(currentMonth, 'yyyy-MM');
 
-  // Generate a list of the last 12 months for the selector
   const availableMonths = Array.from({ length: 12 }, (_, i) => {
     const d = subMonths(new Date(), i);
     return { id: format(d, 'yyyy-MM'), label: format(d, 'MMMM yyyy') };
@@ -88,7 +87,7 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Reward Summary Row */}
+        {/* Lifetime Totals Row */}
         <div className="flex flex-col gap-3">
           <Link href="/rewards" className="flex items-center gap-4 bg-white/40 backdrop-blur-md p-4 rounded-[2rem] border border-white/40 shadow-inner group">
             <div className="flex items-center gap-2">
@@ -104,68 +103,43 @@ function Dashboard() {
               <span className="font-headline text-[#4A3F35]">{stats.petals}</span>
             </div>
             <div className="ml-auto text-[10px] font-headline uppercase tracking-widest text-muted-foreground group-hover:text-primary-foreground transition-colors">
-              Collection →
+              Gallery →
             </div>
           </Link>
 
-          {/* Daily Status */}
+          {/* Today's Earned Status */}
           <div className="bg-white/30 backdrop-blur-sm p-4 rounded-[2rem] border border-white/20 flex flex-col gap-3">
              <div className="flex justify-between items-center px-1">
                 <span className="text-[10px] font-headline uppercase tracking-widest text-muted-foreground">Today's Progress</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="text-muted-foreground hover:text-primary-foreground transition-colors">
+                      <Info className="w-3.5 h-3.5" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-4 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl z-[100]">
+                    <h4 className="font-headline text-[#4A3F35] mb-2">Reward Rules</h4>
+                    <div className="space-y-3 text-xs font-body text-stone-600">
+                      <p><span className="font-headline text-red-400">Hearts</span>: 1 for ≥50% habits, 2 for 100%.</p>
+                      <p><span className="font-headline text-amber-500">Stars</span>: 1 for ≥2 journal sections, 2 for all 5.</p>
+                      <p><span className="font-headline text-emerald-500">Petals</span>: 1 at 3-day streak, 3 at 7-day, 10 at 30-day.</p>
+                    </div>
+                  </PopoverContent>
+                </Popover>
              </div>
              <div className="flex gap-4">
-                <div className="flex items-center gap-2">
-                   <div className={cn("p-1.5 rounded-full transition-all", todayRewards.habitReward ? "bg-red-100" : "bg-stone-100 grayscale opacity-40")}>
-                      <Heart className={cn("w-3.5 h-3.5", todayRewards.habitReward ? "text-red-400 fill-current" : "text-stone-400")} />
+                <div className="flex items-center gap-1.5">
+                   <div className={cn("p-1.5 rounded-full transition-all", todayRewards.heartsEarned && todayRewards.heartsEarned > 0 ? "bg-red-100" : "bg-stone-100 grayscale opacity-40")}>
+                      <Heart className={cn("w-3.5 h-3.5", todayRewards.heartsEarned && todayRewards.heartsEarned > 0 ? "text-red-400 fill-current" : "text-stone-400")} />
                    </div>
-                   <Popover>
-                      <PopoverTrigger asChild>
-                         <button className="text-muted-foreground hover:text-primary-foreground transition-colors">
-                            <Info className="w-3 h-3" />
-                         </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
-                         <p className="text-xs font-body text-stone-600 leading-relaxed">
-                            <span className="font-headline text-red-400">Hearts</span> are earned when you complete <span className="font-bold text-stone-800">more than 50%</span> of your daily habits from total habits.
-                         </p>
-                      </PopoverContent>
-                   </Popover>
+                   <span className="text-xs font-headline text-[#4A3F35]">{todayRewards.heartsEarned || 0}</span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                   <div className={cn("p-1.5 rounded-full transition-all", todayRewards.journalReward ? "bg-amber-100" : "bg-stone-100 grayscale opacity-40")}>
-                      <Star className={cn("w-3.5 h-3.5", todayRewards.journalReward ? "text-amber-500 fill-current" : "text-stone-400")} />
+                <div className="flex items-center gap-1.5">
+                   <div className={cn("p-1.5 rounded-full transition-all", todayRewards.starsEarned && todayRewards.starsEarned > 0 ? "bg-amber-100" : "bg-stone-100 grayscale opacity-40")}>
+                      <Star className={cn("w-3.5 h-3.5", todayRewards.starsEarned && todayRewards.starsEarned > 0 ? "text-amber-500 fill-current" : "text-stone-400")} />
                    </div>
-                   <Popover>
-                      <PopoverTrigger asChild>
-                         <button className="text-muted-foreground hover:text-primary-foreground transition-colors">
-                            <Info className="w-3 h-3" />
-                         </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
-                         <p className="text-xs font-body text-stone-600 leading-relaxed">
-                            <span className="font-headline text-amber-500">Stars</span> are earned when you write in more than <span className="font-bold text-stone-800">2</span> journal sections each day.
-                         </p>
-                      </PopoverContent>
-                   </Popover>
-                </div>
-
-                <div className="flex items-center gap-2">
-                   <div className={cn("p-1.5 rounded-full transition-all", streak > 0 && streak % 3 === 0 ? "bg-emerald-100 animate-sparkle" : "bg-stone-100 grayscale opacity-40")}>
-                      <Flower className={cn("w-3.5 h-3.5", streak > 0 && streak % 3 === 0 ? "text-emerald-500 fill-current" : "text-stone-400")} />
-                   </div>
-                   <Popover>
-                      <PopoverTrigger asChild>
-                         <button className="text-muted-foreground hover:text-primary-foreground transition-colors">
-                            <Info className="w-3 h-3" />
-                         </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-48 p-3 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl">
-                         <p className="text-xs font-body text-stone-600 leading-relaxed">
-                            <span className="font-headline text-emerald-500">Petals</span> are earned every time you maintain a continuous <span className="font-bold text-stone-800">3-day</span> streak.
-                         </p>
-                      </PopoverContent>
-                   </Popover>
+                   <span className="text-xs font-headline text-[#4A3F35]">{todayRewards.starsEarned || 0}</span>
                 </div>
              </div>
           </div>
@@ -258,28 +232,6 @@ function Dashboard() {
             <p className="text-xs text-primary-foreground/80 font-body">Long term growth</p>
           </div>
         </Link>
-      </section>
-
-      {/* Stats Navigation Link */}
-      <section className="px-4 mt-4">
-         <div className="bg-[#E6D8CE44] p-6 rounded-[2rem] border border-stone-200/50 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-               <TrendingUp className="w-6 h-6 text-primary-foreground" />
-               <span className="font-headline text-[#4A3F35]">Deep Insights</span>
-            </div>
-            <Select onValueChange={(val) => router.push(`/stats?month=${val}`)}>
-              <SelectTrigger className="w-[140px] h-8 rounded-full border-stone-100 bg-white shadow-sm font-headline text-[10px] uppercase tracking-wider">
-                <SelectValue placeholder="Jump to Stats" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl">
-                {availableMonths.map(m => (
-                  <SelectItem key={m.id} value={m.id} className="font-body text-xs">
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-         </div>
       </section>
 
       {/* Bottom Nav */}

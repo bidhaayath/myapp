@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -77,7 +76,7 @@ export function PageChecklist({ entry, onUpdate }: PageProps) {
   }, [entry.checklist]);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 pb-32 pt-8 bg-stone-100/40">
+    <div className="flex flex-col h-full overflow-y-auto px-4 pb-32 pt-8 bg-stone-200/60">
       <PageHeader 
         date={entry.date} 
         title="Daily Checklist" 

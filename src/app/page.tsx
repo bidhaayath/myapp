@@ -97,7 +97,7 @@ function Dashboard() {
                 {d}
               </div>
             ))}
-            {days.map((day, i) => {
+            {days.map((day) => {
               const dateStr = format(day, 'yyyy-MM-dd');
               const entry = entries[dateStr];
               const moodInfo = MOODS.find(m => m.label === entry?.mood);
@@ -140,18 +140,18 @@ function Dashboard() {
 
       {/* Quick Navigation Cards */}
       <section className="px-4 grid grid-cols-2 gap-4">
-        <Link href="/goals/monthly" className="bg-secondary/20 p-6 rounded-[2rem] border border-secondary/30 flex flex-col justify-between h-40 group shadow-sm transition-all active:scale-95">
+        <Link href="/goals/monthly" className="bg-secondary/40 p-6 rounded-[2rem] border border-secondary/50 flex flex-col justify-between h-40 group shadow-sm transition-all active:scale-95">
           <Target className="w-8 h-8 text-secondary-foreground group-hover:scale-110 transition-transform" />
           <div>
             <h3 className="text-xl font-headline text-secondary-foreground">Monthly Goals</h3>
-            <p className="text-xs text-secondary-foreground/70 font-body">Reset your focus</p>
+            <p className="text-xs text-secondary-foreground/80 font-body">Reset your focus</p>
           </div>
         </Link>
-        <Link href="/goals/yearly" className="bg-primary/20 p-6 rounded-[2rem] border border-primary/30 flex flex-col justify-between h-40 group shadow-sm transition-all active:scale-95">
+        <Link href="/goals/yearly" className="bg-primary/40 p-6 rounded-[2rem] border border-primary/50 flex flex-col justify-between h-40 group shadow-sm transition-all active:scale-95">
           <CalendarIcon className="w-8 h-8 text-primary-foreground group-hover:scale-110 transition-transform" />
           <div>
             <h3 className="text-xl font-headline text-primary-foreground">Yearly Vision</h3>
-            <p className="text-xs text-primary-foreground/70 font-body">Long term growth</p>
+            <p className="text-xs text-primary-foreground/80 font-body">Long term growth</p>
           </div>
         </Link>
       </section>

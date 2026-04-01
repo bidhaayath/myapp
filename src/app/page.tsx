@@ -57,17 +57,17 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-[#FCFAFA] flex flex-col pb-24">
       {/* Header */}
-      <header className="px-6 pt-12 pb-6 flex justify-between items-center">
+      <header className="px-6 pt-12 pb-8 flex justify-between items-center bg-[#F2E6DA] rounded-b-[2.5rem] shadow-sm mb-8 border-b border-stone-200/50">
         <div>
           <h1 className="text-4xl font-headline text-[#4A3F35]">BT Journal</h1>
           <p className="text-muted-foreground font-body italic">Creative mindful journey</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <div className="bg-white/80 p-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2">
+          <div className="bg-white/90 backdrop-blur-sm p-3 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-secondary-foreground" />
             <span className="font-headline text-lg">{streak} Day Streak</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => signOut(auth)} className="text-muted-foreground hover:text-red-400">
+          <Button variant="ghost" size="sm" onClick={() => signOut(auth)} className="text-muted-foreground hover:text-red-400 h-8">
             <LogOut className="w-4 h-4 mr-1" />
             Sign Out
           </Button>
@@ -102,7 +102,7 @@ function Dashboard() {
               const entry = entries[dateStr];
               const moodInfo = MOODS.find(m => m.label === entry?.mood);
               const isToday = isSameDay(day, new Date());
-              const isEntryDone = entry && (entry.freeWriting || entry.drawingData || entry.checklist.some(i => i.checked));
+              const isEntryDone = entry && (entry.freeWriting || entry.drawingData || entry.checklist.some(item => item.checked));
 
               return (
                 <button

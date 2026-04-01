@@ -79,7 +79,7 @@ export function useJournalStore() {
       mood: existing?.mood || '',
       freeWriting: existing?.freeWriting || '',
       stickers: existing?.stickers || [],
-      drawingData: existing?.drawingData || undefined,
+      drawingData: existing?.drawingData || '',
     };
   };
 

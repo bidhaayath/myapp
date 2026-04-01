@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { format, parse, startOfYear, addMonths, eachDayOfInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { format, parse, startOfYear, addMonths, eachDayOfInterval, startOfMonth, endOfMonth, isSameYear, isSameMonth } from 'date-fns';
 import { 
   Tooltip, ResponsiveContainer, 
   PieChart as RePieChart, Pie, Cell,
@@ -37,6 +37,8 @@ function StatisticsContent() {
     }
   }, [monthFromQuery]);
 
+  const isYearlyView = !selectedMonthId.includes('-');
+
   // Fetch monthly goals collection
   const monthlyGoalsRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -52,94 +54,145 @@ function StatisticsContent() {
   const { data: allYearlyGoals } = useCollection<{ goals: Goal[] }>(yearlyGoalsRef);
 
   const selectedMonthData = useMemo(() => {
-    if (!allMonthlyGoals) return null;
+    if (!allMonthlyGoals || isYearlyView) return null;
     return allMonthlyGoals.find(m => m.id === selectedMonthId);
-  }, [allMonthlyGoals, selectedMonthId]);
+  }, [allMonthlyGoals, selectedMonthId, isYearlyView]);
 
   const selectedYearId = useMemo(() => {
+    if (isYearlyView) return selectedMonthId;
     try {
       return format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'yyyy');
     } catch {
       return format(new Date(), 'yyyy');
     }
-  }, [selectedMonthId]);
+  }, [selectedMonthId, isYearlyView]);
 
   const selectedYearData = useMemo(() => {
     if (!allYearlyGoals) return null;
     return allYearlyGoals.find(y => y.id === selectedYearId);
   }, [allYearlyGoals, selectedYearId]);
 
-  const availableMonths = useMemo(() => {
-    const months: string[] = [];
+  const availableTimeFrames = useMemo(() => {
+    const frames: { id: string; label: string; type: 'month' | 'year' }[] = [];
     const now = new Date();
-    const currentYearStart = startOfYear(now);
+    const currentYear = now.getFullYear();
     
+    // Add current and past year as "Full Year"
+    for (let i = 0; i < 2; i++) {
+      const year = currentYear - i;
+      frames.push({ id: year.toString(), label: `Full Year ${year}`, type: 'year' });
+    }
+
+    // Add all months of the current year
+    const currentYearStart = startOfYear(now);
     for (let i = 0; i < 12; i++) {
-      months.push(format(addMonths(currentYearStart, i), 'yyyy-MM'));
+      const date = addMonths(currentYearStart, i);
+      const id = format(date, 'yyyy-MM');
+      frames.push({ id, label: format(date, 'MMMM yyyy'), type: 'month' });
     }
 
-    if (allMonthlyGoals) {
-      allMonthlyGoals.forEach(m => {
-        if (!months.includes(m.id)) {
-          months.push(m.id);
-        }
+    // Add any extra months found in entries
+    Object.keys(entries).forEach(dateStr => {
+      const monthId = dateStr.substring(0, 7);
+      if (!frames.some(f => f.id === monthId)) {
+        try {
+          const date = parse(monthId, 'yyyy-MM', new Date());
+          frames.push({ id: monthId, label: format(date, 'MMMM yyyy'), type: 'month' });
+        } catch {}
+      }
+    });
+
+    return frames.sort((a, b) => b.id.localeCompare(a.id));
+  }, [entries]);
+
+  // Data preparation for the selected timeframe
+  const timeFrameStats = useMemo(() => {
+    if (isYearlyView) {
+      // Aggregate by month for the year
+      const year = parseInt(selectedMonthId);
+      return Array.from({ length: 12 }, (_, i) => {
+        const monthDate = addMonths(new Date(year, 0, 1), i);
+        const monthId = format(monthDate, 'yyyy-MM');
+        const monthLabel = format(monthDate, 'MMM');
+        
+        const habitData: Record<string, number> = {};
+        let totalDailyRates = 0;
+        let daysWithEntriesCount = 0;
+
+        Object.values(entries).forEach(entry => {
+          if (entry.date.startsWith(monthId)) {
+            daysWithEntriesCount++;
+            let completedInDay = 0;
+            DEFAULT_CHECKLIST_ITEMS.forEach(label => {
+              const isDone = entry.checklist?.find(it => it.label === label)?.checked;
+              if (isDone) {
+                habitData[label] = (habitData[label] || 0) + 1;
+                completedInDay++;
+              }
+            });
+            totalDailyRates += (completedInDay / DEFAULT_CHECKLIST_ITEMS.length) * 100;
+          }
+        });
+
+        return {
+          date: monthId,
+          dayNum: monthLabel,
+          completionRate: daysWithEntriesCount > 0 ? totalDailyRates / daysWithEntriesCount : 0,
+          ...habitData
+        };
+      });
+    } else {
+      // Daily aggregate for the month
+      const selectedDate = parse(selectedMonthId, 'yyyy-MM', new Date());
+      const days = eachDayOfInterval({
+        start: startOfMonth(selectedDate),
+        end: endOfMonth(selectedDate)
+      });
+
+      return days.map(day => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const entry = entries[dateStr];
+        const dayNum = format(day, 'd');
+
+        const habitData: Record<string, number> = {};
+        let totalCompleted = 0;
+
+        DEFAULT_CHECKLIST_ITEMS.forEach(label => {
+          const isCompleted = entry?.checklist?.find(i => i.label === label)?.checked ? 1 : 0;
+          habitData[label] = isCompleted;
+          totalCompleted += isCompleted;
+        });
+
+        const completionRate = DEFAULT_CHECKLIST_ITEMS.length > 0 
+          ? (totalCompleted / DEFAULT_CHECKLIST_ITEMS.length) * 100 
+          : 0;
+
+        return {
+          date: dateStr,
+          dayNum,
+          completionRate,
+          ...habitData
+        };
       });
     }
+  }, [entries, selectedMonthId, isYearlyView]);
 
-    return months.sort((a, b) => b.localeCompare(a));
-  }, [allMonthlyGoals]);
-
-  // Data preparation for the selected month
-  const monthStats = useMemo(() => {
-    const selectedDate = parse(selectedMonthId, 'yyyy-MM', new Date());
-    const days = eachDayOfInterval({
-      start: startOfMonth(selectedDate),
-      end: endOfMonth(selectedDate)
-    });
-
-    return days.map(day => {
-      const dateStr = format(day, 'yyyy-MM-dd');
-      const entry = entries[dateStr];
-      const dayNum = format(day, 'd');
-
-      const habitData: Record<string, number> = {};
-      let totalCompleted = 0;
-
-      DEFAULT_CHECKLIST_ITEMS.forEach(label => {
-        const isCompleted = entry?.checklist?.find(i => i.label === label)?.checked ? 1 : 0;
-        habitData[label] = isCompleted;
-        totalCompleted += isCompleted;
-      });
-
-      const completionRate = DEFAULT_CHECKLIST_ITEMS.length > 0 
-        ? (totalCompleted / DEFAULT_CHECKLIST_ITEMS.length) * 100 
-        : 0;
-
-      return {
-        date: dateStr,
-        dayNum,
-        completionRate,
-        ...habitData
-      };
-    });
-  }, [entries, selectedMonthId]);
-
-  // Calculate total completions per habit for the month
+  // Calculate total completions per habit for the timeframe
   const habitCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     DEFAULT_CHECKLIST_ITEMS.forEach(habit => {
-      counts[habit] = monthStats.reduce((sum, day) => sum + (day[habit] || 0), 0);
+      counts[habit] = timeFrameStats.reduce((sum, period) => sum + (period[habit] || 0), 0);
     });
     return counts;
-  }, [monthStats]);
+  }, [timeFrameStats]);
 
   if (!isLoaded) return null;
 
-  const entryList = Object.values(entries);
-  const totalDays = entryList.length;
+  const filteredEntries = Object.values(entries).filter(entry => entry.date.startsWith(selectedMonthId));
+  const totalDaysInFrame = filteredEntries.length;
   
-  // Mood Statistics
-  const moodCounts = entryList.reduce((acc, entry) => {
+  // Mood Statistics for filtered entries
+  const moodCounts = filteredEntries.reduce((acc, entry) => {
     if (entry.mood) acc[entry.mood] = (acc[entry.mood] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -174,32 +227,29 @@ function StatisticsContent() {
         <div className="w-10" />
       </header>
 
-      {/* Global Month Selector */}
+      {/* Global Timeframe Selector */}
       <div className="mb-8 flex justify-center">
         <Select value={selectedMonthId} onValueChange={setSelectedMonthId}>
           <SelectTrigger className="w-[180px] h-10 rounded-full border-stone-100 bg-white shadow-sm font-headline">
-            <SelectValue placeholder="Select month" />
+            <SelectValue placeholder="Select period" />
           </SelectTrigger>
           <SelectContent className="rounded-2xl border-stone-100">
-            {availableMonths.map(monthId => {
-              const date = parse(monthId, 'yyyy-MM', new Date());
-              return (
-                <SelectItem key={monthId} value={monthId} className="font-body">
-                  {format(date, 'MMMM yyyy')}
-                </SelectItem>
-              );
-            })}
+            {availableTimeFrames.map(frame => (
+              <SelectItem key={frame.id} value={frame.id} className="font-body">
+                {frame.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-primary/40 text-center">
+        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-[#D8CCC1] text-center">
           <Calendar className="w-6 h-6 mx-auto mb-2 text-primary-foreground" />
-          <p className="text-2xl font-headline text-primary-foreground">{totalDays}</p>
+          <p className="text-2xl font-headline text-primary-foreground">{totalDaysInFrame}</p>
           <p className="text-[10px] uppercase tracking-widest text-primary-foreground/70 font-headline">Journal Days</p>
         </Card>
-        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-secondary/40 text-center">
+        <Card className="p-6 rounded-[2rem] border-none shadow-sm bg-[#FFB7B7] text-center">
           <Award className="w-6 h-6 mx-auto mb-2 text-secondary-foreground" />
           <p className="text-2xl font-headline text-secondary-foreground">{streak}</p>
           <p className="text-[10px] uppercase tracking-widest text-secondary-foreground/70 font-headline">Current Streak</p>
@@ -207,80 +257,74 @@ function StatisticsContent() {
       </div>
 
       {/* 1. Yearly Goals */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#E6D8CE44] mb-8">
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#E6D8CE] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <Star className="w-6 h-6 text-primary-foreground" />
           <h2 className="text-xl font-headline text-[#4A3F35]">{selectedYearId} Vision</h2>
         </div>
         <div className="space-y-4">
-          <div className="flex justify-between text-[10px] font-headline uppercase tracking-widest text-stone-500">
+          <div className="flex justify-between text-[10px] font-headline uppercase tracking-widest text-stone-600">
             <span>Overall Growth</span>
             <span>{completedYearlyGoals} / {totalYearlyGoals}</span>
           </div>
-          <Progress value={yearlyGoalProgress} className="h-3 bg-stone-200" />
-          <p className="text-xs text-stone-600 font-body italic mt-2">
+          <Progress value={yearlyGoalProgress} className="h-3 bg-white/40" />
+          <p className="text-xs text-stone-700 font-body italic mt-2">
             You've completed {Math.round(yearlyGoalProgress)}% of your yearly objectives.
           </p>
         </div>
       </Card>
 
-      {/* 2. Monthly Goals */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F9F1E7] mb-8">
-        <div className="flex items-center gap-3 mb-6">
-          <Target className="w-6 h-6 text-secondary-foreground" />
-          <h2 className="text-xl font-headline text-[#4A3F35]">Monthly Intentions</h2>
-        </div>
+      {/* 2. Monthly Goals - Only show if not in full year view */}
+      {!isYearlyView && (
+        <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5E6E6] mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <Target className="w-6 h-6 text-secondary-foreground" />
+            <h2 className="text-xl font-headline text-[#4A3F35]">Monthly Intentions</h2>
+          </div>
 
-        <div className="space-y-6">
-          <div className="flex flex-col items-center justify-center p-6 bg-secondary/20 rounded-[2rem] border border-secondary/30">
-            <div className="relative w-32 h-32 mb-4">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle
-                  cx="64"
-                  cy="64"
-                  r="58"
-                  stroke="currentColor"
-                  strokeWidth="10"
-                  fill="transparent"
-                  className="text-stone-300"
-                />
-                <circle
-                  cx="64"
-                  cy="64"
-                  r="58"
-                  stroke="currentColor"
-                  strokeWidth="10"
-                  fill="transparent"
-                  strokeDasharray={364.4}
-                  strokeDashoffset={364.4 - (364.4 * goalProgress) / 100}
-                  strokeLinecap="round"
-                  className="text-secondary-foreground transition-all duration-1000"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-3xl font-headline text-secondary-foreground">{Math.round(goalProgress)}%</span>
+          <div className="space-y-6">
+            <div className="flex flex-col items-center justify-center p-6 bg-secondary/20 rounded-[2rem] border border-secondary/30">
+              <div className="relative w-32 h-32 mb-4">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="58"
+                    stroke="currentColor"
+                    strokeWidth="10"
+                    fill="transparent"
+                    className="text-white/30"
+                  />
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="58"
+                    stroke="currentColor"
+                    strokeWidth="10"
+                    fill="transparent"
+                    strokeDasharray={364.4}
+                    strokeDashoffset={364.4 - (364.4 * goalProgress) / 100}
+                    strokeLinecap="round"
+                    className="text-secondary-foreground transition-all duration-1000"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-3xl font-headline text-secondary-foreground">{Math.round(goalProgress)}%</span>
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-headline text-[#4A3F35]">{totalGoals} Goals Set</p>
+                <p className="text-sm text-stone-700 font-body">{completedGoals} Completed successfully</p>
               </div>
             </div>
-            <div className="text-center">
-              <p className="text-lg font-headline text-[#4A3F35]">{totalGoals} Goals Set</p>
-              <p className="text-sm text-stone-600 font-body">{completedGoals} Completed successfully</p>
-            </div>
           </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between text-[10px] font-headline uppercase tracking-widest text-stone-500 px-1">
-              <span>Goal Progress</span>
-              <span>{completedGoals} / {totalGoals}</span>
-            </div>
-            <Progress value={goalProgress} className="h-2 bg-stone-200" />
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* 3. Mood */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F5EBE0] mb-8 overflow-hidden">
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F2EDE9] mb-8 overflow-hidden">
         <div className="flex items-center gap-3 mb-6">
-          <Smile className="w-6 h-6 text-primary-foreground" />
+          <Smile className="w-6 h-6 text-[#4A3F35]" />
           <h2 className="text-xl font-headline text-[#4A3F35]">Mood Landscape</h2>
         </div>
         <div className="h-64 w-full">
@@ -297,7 +341,7 @@ function StatisticsContent() {
                   dataKey="value"
                 >
                   {moodData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={3} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -307,14 +351,14 @@ function StatisticsContent() {
             <div className="h-full flex items-center justify-center italic text-stone-500 font-body">Log your moods to see insights</div>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 mt-4">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-3 mt-6">
           {moodData.map(m => (
-            <div key={m.name} className="flex items-center justify-between text-sm font-body">
-              <span className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: m.color }} />
+            <div key={m.name} className="flex items-center justify-between text-sm font-headline">
+              <span className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: m.color }} />
                 {m.name}
               </span>
-              <span className="text-stone-600 font-headline">{totalDays > 0 ? Math.round((m.value/totalDays)*100) : 0}%</span>
+              <span className="text-[#4A3F35] font-bold">{totalDaysInFrame > 0 ? Math.round((m.value/totalDaysInFrame)*100) : 0}%</span>
             </div>
           ))}
         </div>
@@ -329,41 +373,47 @@ function StatisticsContent() {
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {DEFAULT_CHECKLIST_ITEMS.map((habit) => (
-            <Card key={habit} className="p-4 rounded-[1.5rem] border-none shadow-sm bg-[#F5EBE0] overflow-hidden flex flex-col h-44">
+            <Card key={habit} className="p-4 rounded-[1.5rem] border-none shadow-sm bg-[#F2EDE9] overflow-hidden flex flex-col h-44">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="text-sm font-headline text-[#4A3F35] leading-tight flex-1 pr-2">{habit}</h3>
-                <div className="text-[10px] font-headline text-primary-foreground bg-primary/20 px-2 py-0.5 rounded-full">
-                  {habitCounts[habit]} Done
+                <div className="text-[10px] font-headline text-primary-foreground bg-primary/40 px-2 py-0.5 rounded-full">
+                  {habitCounts[habit]} {isYearlyView ? 'Total' : 'Done'}
                 </div>
               </div>
               <div className="flex-1 w-full my-2">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthStats}>
-                    <YAxis hide domain={[0, 1.2]} />
+                  <BarChart data={timeFrameStats}>
+                    <YAxis hide />
                     <XAxis 
                       dataKey="dayNum" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{fontSize: 8, fill: '#8D7B6D'}} 
-                      interval={4}
+                      tick={{fontSize: 8, fill: '#4A3F35', fontWeight: 'bold'}} 
+                      interval={isYearlyView ? 0 : 4}
                     />
                     <Tooltip 
-                      contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '10px' }}
+                      contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                       cursor={{ fill: 'rgba(74, 63, 53, 0.05)' }}
-                      labelFormatter={(label) => `Day ${label}`}
-                      formatter={(value: number) => [value === 1 ? 'Done' : 'Missed', 'Status']}
+                      labelFormatter={(label) => isYearlyView ? label : `Day ${label}`}
+                      formatter={(value: number) => [value, isYearlyView ? 'Completions' : 'Status']}
                     />
                     <Bar 
                       dataKey={habit} 
                       fill="#4A3F35" 
-                      radius={[2, 2, 0, 0]}
+                      radius={[4, 4, 0, 0]}
+                      opacity={0.6}
                     />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex justify-between items-center text-[10px] text-stone-500 font-body px-1">
-                <span>Monthly Progress</span>
-                <span className="font-headline text-stone-700">{Math.round((habitCounts[habit] / monthStats.length) * 100)}%</span>
+              <div className="flex justify-between items-center text-[10px] text-stone-600 font-body px-1">
+                <span>{isYearlyView ? 'Yearly' : 'Monthly'} Progress</span>
+                <span className="font-headline text-[#4A3F35] font-bold">
+                  {isYearlyView 
+                    ? `${Math.round((habitCounts[habit] / (totalDaysInFrame || 1)) * 100)}%`
+                    : `${Math.round((habitCounts[habit] / timeFrameStats.length) * 100)}%`
+                  }
+                </span>
               </div>
             </Card>
           ))}
@@ -371,25 +421,25 @@ function StatisticsContent() {
       </div>
 
       {/* 5. Habit Momentum */}
-      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#F2E6DA] mb-8">
+      <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-[#E6D8CE] mb-8">
         <div className="flex items-center gap-3 mb-6">
           <TrendingUp className="w-6 h-6 text-primary-foreground" />
           <h2 className="text-xl font-headline text-[#4A3F35]">Habit Momentum</h2>
         </div>
         <div className="h-48 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={monthStats}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d7c4b5" />
+            <LineChart data={timeFrameStats}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#white/20" />
               <XAxis 
                 dataKey="dayNum" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{fontSize: 10, fill: '#8D7B6D'}} 
-                interval={4}
+                tick={{fontSize: 10, fill: '#4A3F35', fontWeight: 'bold'}} 
+                interval={isYearlyView ? 0 : 4}
               />
               <YAxis hide domain={[0, 100]} />
               <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', backgroundColor: '#fff' }}
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: '#fff' }}
                 labelStyle={{ fontWeight: 'bold', color: '#4A3F35' }}
                 formatter={(value: number) => [`${Math.round(value)}%`, 'Completion']}
               />
@@ -397,19 +447,19 @@ function StatisticsContent() {
                 type="monotone" 
                 dataKey="completionRate" 
                 stroke="#4A3F35" 
-                strokeWidth={3} 
-                dot={{ r: 3, fill: '#4A3F35' }} 
-                activeDot={{ r: 5 }}
+                strokeWidth={4} 
+                dot={{ r: 4, fill: '#4A3F35', strokeWidth: 2, stroke: '#fff' }} 
+                activeDot={{ r: 6 }}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <p className="text-xs text-center text-stone-600 mt-4 font-body italic">
-          Overall checklist completion for {format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'MMMM yyyy')}
+        <p className="text-xs text-center text-stone-700 mt-6 font-body italic">
+          Overall checklist completion for {isYearlyView ? selectedMonthId : format(parse(selectedMonthId, 'yyyy-MM', new Date()), 'MMMM yyyy')}
         </p>
       </Card>
 
-      <p className="text-center text-stone-400 italic font-body text-sm mt-8">
+      <p className="text-center text-stone-500 italic font-body text-sm mt-8">
         "Growth is a slow process, but quitting won't speed it up."
       </p>
     </div>

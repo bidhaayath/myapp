@@ -5,7 +5,7 @@ import { useMemo, useCallback } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
 import { JournalEntry, ALL_DEFAULT_HABIT_LABELS, Goal, Routine, UserStats } from '@/lib/types';
-import { format, startOfMonth, subDays, isSameDay } from 'date-fns';
+import { format, startOfMonth, subDays, isSameDay, addDays, parse } from 'date-fns';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export function useJournalStore() {
@@ -78,44 +78,59 @@ export function useJournalStore() {
 
     if (!entriesData) return baseStats;
 
-    // Calculate Hearts and Stars from entries
+    // 1. Calculate Hearts and Stars from all entries
     entriesData.forEach(entry => {
       baseStats.hearts += (entry.rewardsClaimed?.heartsEarned || 0);
       baseStats.stars += (entry.rewardsClaimed?.starsEarned || 0);
     });
 
-    // Calculate Petals from streaks
-    // Sort entries by date to process streaks chronologically
+    // 2. Calculate Petals from historical streaks
+    // Sort all dates to process chronologically
     const sortedDates = Object.keys(entries).sort();
     let currentStreakLength = 0;
     let totalPetals = 0;
+    let lastDate: Date | null = null;
 
     sortedDates.forEach(dateStr => {
+      const currentDate = parse(dateStr, 'yyyy-MM-dd', new Date());
       const entry = entries[dateStr];
       const hearts = entry.rewardsClaimed?.heartsEarned || 0;
       const stars = entry.rewardsClaimed?.starsEarned || 0;
+      const isActive = hearts > 0 || stars > 0;
 
-      if (hearts > 0 || stars > 0) {
-        currentStreakLength++;
-        
+      if (isActive) {
+        // Check if this active day is consecutive to the last one
+        if (lastDate && !isSameDay(currentDate, addDays(lastDate, 1))) {
+          // Gap detected - streak was broken before this entry
+          currentStreakLength = 1;
+        } else {
+          currentStreakLength++;
+        }
+
         // Milestone logic:
-        // 3 days = 1 petal
-        // 6 days = 2 petals
-        // 7 days = 3 petals total (+1 bonus)
-        // 9, 12, 15, 18, 21, 24, 27 = +1 each (Total 10 at Day 27)
-        // 30 days = 10 petals total (No extra at day 30 if we reached it this way)
-        
-        if (currentStreakLength % 3 === 0 && currentStreakLength <= 27) {
+        // Every 3 days = 1 petal
+        if (currentStreakLength % 3 === 0 && currentStreakLength <= 30) {
           totalPetals += 1;
-        } else if (currentStreakLength > 30 && currentStreakLength % 3 === 0) {
+        }
+        
+        // 7 days = 3 petals total (+1 bonus)
+        if (currentStreakLength === 7) {
           totalPetals += 1;
         }
 
-        if (currentStreakLength === 7) {
-          totalPetals += 1; // Bonus to reach 3 total at Day 7
+        // 30 days = 10 petals total
+        // Multiples of 3 give 10 petals by Day 27 (3,6,9,12,15,18,21,24,27) + Day 7 bonus = 10.
+        // So Day 30 would normally be the 11th petal. 
+        // We'll cap it at 10 for the 30-day streak per requirement.
+        if (currentStreakLength > 30 && currentStreakLength % 3 === 0) {
+           totalPetals += 1;
         }
+
+        lastDate = currentDate;
       } else {
+        // Day recorded but was not active - breaks the streak
         currentStreakLength = 0;
+        lastDate = null;
       }
     });
 

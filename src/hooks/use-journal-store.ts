@@ -89,7 +89,6 @@ export function useJournalStore() {
     const sortedDates = Object.keys(entries).sort();
     let currentStreakLength = 0;
     let totalPetals = 0;
-    const streakMilestonesReached = new Set<string>();
 
     sortedDates.forEach(dateStr => {
       const entry = entries[dateStr];
@@ -98,49 +97,29 @@ export function useJournalStore() {
 
       if (hearts > 0 || stars > 0) {
         currentStreakLength++;
-        // Check milestones
-        if (currentStreakLength % 3 === 0) {
+        
+        // Milestone logic:
+        // 3 days = 1 petal
+        // 6 days = 2 petals
+        // 7 days = 3 petals total (+1 bonus)
+        // 9, 12, 15, 18, 21, 24, 27 = +1 each (Total 10 at Day 27)
+        // 30 days = 10 petals total (No extra at day 30 if we reached it this way)
+        
+        if (currentStreakLength % 3 === 0 && currentStreakLength <= 27) {
+          totalPetals += 1;
+        } else if (currentStreakLength > 30 && currentStreakLength % 3 === 0) {
           totalPetals += 1;
         }
+
         if (currentStreakLength === 7) {
-          totalPetals += 1; // 7 days = 3 total (Day 3, 6 give 2, so +1 at day 7)
-        }
-        if (currentStreakLength === 30) {
-          // Day 30 is exactly 10 blocks of 3. So 10 petals already given at 3,6,9...30.
-          // 7 day bonuses would have been given at 7, 14, 21, 28.
-          // The prompt says "30 days = 10 petals total". 
-          // Let's adjust to exactly what the prompt specifies.
+          totalPetals += 1; // Bonus to reach 3 total at Day 7
         }
       } else {
         currentStreakLength = 0;
       }
     });
 
-    // Prompt logic: 3 days = 1, 7 days = 3 total, 30 days = 10 total.
-    // Let's re-calculate petals based strictly on continuous streaks.
-    let reCalcPetals = 0;
-    let tempStreak = 0;
-    sortedDates.forEach(dateStr => {
-      const entry = entries[dateStr];
-      if ((entry.rewardsClaimed?.heartsEarned || 0) > 0 || (entry.rewardsClaimed?.starsEarned || 0) > 0) {
-        tempStreak++;
-        // Milestone logic
-        if (tempStreak % 3 === 0) reCalcPetals += 1;
-        if (tempStreak === 7) reCalcPetals += 1; // At 7, it's 3 total (3,6,7)
-        if (tempStreak === 30) {
-          // At 30, it should be 10 total.
-          // Blocks of 3 at 30 days = 10 petals.
-          // If we also gave bonus at 7,14,21,28, it would be 14.
-          // So for L=30, we don't add bonuses if we want 10 total? 
-          // The prompt says "Every continuous 3 qualifying days = 1 petal". 
-          // 30 / 3 = 10. So it's already 10.
-        }
-      } else {
-        tempStreak = 0;
-      }
-    });
-
-    baseStats.petals = reCalcPetals;
+    baseStats.petals = totalPetals;
 
     return baseStats;
   }, [entriesData, entries, user, statsData]);
@@ -195,6 +174,7 @@ export function useJournalStore() {
     const rewards = { ...newEntry.rewardsClaimed };
     
     // 1. Hearts (Habits)
+    // 0 for < 50%, 1 for 50-99%, 2 for 100%
     const totalHabits = newEntry.checklist.length + newEntry.customChecklist.length;
     const completedHabits = newEntry.checklist.filter(i => i.checked).length + newEntry.customChecklist.filter(i => i.checked).length;
     const habitPercent = totalHabits > 0 ? (completedHabits / totalHabits) : 0;
@@ -208,6 +188,7 @@ export function useJournalStore() {
     }
 
     // 2. Stars (Journaling)
+    // 0 for < 2 sections, 1 for 2+ sections, 2 for all 5
     const journalSections = [
       newEntry.reflectionPositive.grateful,
       newEntry.reflectionPositive.learned,
@@ -225,17 +206,14 @@ export function useJournalStore() {
       rewards.starsEarned = 0;
     }
 
-    // 3. Perfect Day Badge
-    const newBadges = [...stats.badges];
-    if (rewards.heartsEarned === 2 && rewards.starsEarned === 2 && !newBadges.includes('perfect-day')) {
-      newBadges.push('perfect-day');
-    }
-
     // Apply updates
     const finalData = { ...newEntry, rewardsClaimed: rewards, userId: user.uid, date };
     setDocumentNonBlocking(ref, finalData, { merge: true });
 
-    if (newBadges.length > stats.badges.length) {
+    // Badge Logic
+    const newBadges = [...stats.badges];
+    if (rewards.heartsEarned === 2 && rewards.starsEarned === 2 && !newBadges.includes('perfect-day')) {
+      newBadges.push('perfect-day');
       updateStats({ badges: newBadges });
     }
   };

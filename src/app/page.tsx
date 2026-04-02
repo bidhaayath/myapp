@@ -61,11 +61,6 @@ function Dashboard() {
 
   const currentMonthId = format(currentMonth, 'yyyy-MM');
 
-  const availableMonths = Array.from({ length: 12 }, (_, i) => {
-    const d = subMonths(new Date(), i);
-    return { id: format(d, 'yyyy-MM'), label: format(d, 'MMMM yyyy') };
-  });
-
   return (
     <div className="min-h-screen bg-[#FCFAFA] flex flex-col pb-24">
       {/* Header */}
@@ -120,9 +115,9 @@ function Dashboard() {
                   <PopoverContent className="w-64 p-4 rounded-2xl bg-white/95 backdrop-blur border-stone-100 shadow-xl z-[100]">
                     <h4 className="font-headline text-[#4A3F35] mb-2">Reward Rules</h4>
                     <div className="space-y-3 text-xs font-body text-stone-600">
-                      <p><span className="font-headline text-red-400">Hearts</span>: 1 for ≥50% habits, 2 for 100%.</p>
-                      <p><span className="font-headline text-amber-500">Stars</span>: 1 for ≥2 journal sections, 2 for all 5.</p>
-                      <p><span className="font-headline text-emerald-500">Petals</span>: 1 at 3-day streak, 3 at 7-day, 10 at 30-day.</p>
+                      <p><span className="font-headline text-red-400">Hearts</span>: 1 for ≥50% habits, 2 for 100% daily.</p>
+                      <p><span className="font-headline text-amber-500">Stars</span>: 1 for ≥2 journal sections, 2 for all 5 daily.</p>
+                      <p><span className="font-headline text-emerald-500">Petals</span>: 1 at 3 days, 3 total at 7 days, 10 total at 30 days of continuous activity.</p>
                     </div>
                   </PopoverContent>
                 </Popover>

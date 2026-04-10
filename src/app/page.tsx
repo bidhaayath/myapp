@@ -3,12 +3,11 @@
 
 import React, { useState, Suspense, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
 import { useJournalStore } from '@/hooks/use-journal-store';
 import { JournalContainer } from '@/components/journal/journal-container';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Sparkles, Calendar as CalendarIcon, Target, TrendingUp, Settings, LogOut, BarChart3, Heart, Star, Flower, Info } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
 import { MOODS } from '@/lib/types';
@@ -21,11 +20,17 @@ function Dashboard() {
   const searchParams = useSearchParams();
   const { entries, isLoaded, getStreak, getEntry, updateEntry, user, stats } = useJournalStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [todayDate, setTodayDate] = useState<string | null>(null);
   const auth = useAuth();
 
   const dateFromUrl = searchParams.get('date');
-  const activeDate = dateFromUrl || format(new Date(), 'yyyy-MM-dd');
+  const activeDate = dateFromUrl || (todayDate || format(new Date(), 'yyyy-MM-dd'));
   const isJournalOpen = !!dateFromUrl;
+
+  useEffect(() => {
+    // Set today's date on the client to avoid hydration mismatch
+    setTodayDate(format(new Date(), 'yyyy-MM-dd'));
+  }, []);
 
   useEffect(() => {
     if (isLoaded && !user) {
@@ -39,13 +44,18 @@ function Dashboard() {
     router.push(`/?date=${format(date, 'yyyy-MM-dd')}`);
   };
 
+  const startMonth = startOfMonth(currentMonth);
+  const endMonth = endOfMonth(currentMonth);
   const days = eachDayOfInterval({
-    start: startOfMonth(currentMonth),
-    end: endOfMonth(currentMonth),
+    start: startMonth,
+    end: endMonth,
   });
 
+  // Calculate day of the week for the 1st of the month (0 = Sunday)
+  const startDayOfWeek = getDay(startMonth);
+
   const streak = getStreak();
-  const todayDateStr = format(new Date(), 'yyyy-MM-dd');
+  const todayDateStr = todayDate || format(new Date(), 'yyyy-MM-dd');
   const todayEntry = entries[todayDateStr];
   const todayRewards = todayEntry?.rewardsClaimed || { heartsEarned: 0, starsEarned: 0 };
 
@@ -170,11 +180,17 @@ function Dashboard() {
                 {d}
               </div>
             ))}
+            
+            {/* Calendar spacers for alignment */}
+            {Array.from({ length: startDayOfWeek }).map((_, i) => (
+              <div key={`spacer-${i}`} className="aspect-square" />
+            ))}
+
             {days.map((day) => {
               const dateStr = format(day, 'yyyy-MM-dd');
               const entry = entries[dateStr];
               const moodInfo = MOODS.find(m => m.label === entry?.mood);
-              const isToday = isSameDay(day, new Date());
+              const isToday = todayDate ? isSameDay(day, new Date(todayDate)) : false;
               const isEntryDone = entry && (entry.freeWriting || entry.drawingData || entry.checklist.some(item => item.checked));
 
               return (
@@ -183,7 +199,7 @@ function Dashboard() {
                   onClick={() => handleDateSelect(day)}
                   className={cn(
                     "aspect-square rounded-2xl flex flex-col items-center justify-center relative transition-all border",
-                    isToday ? "border-primary-foreground/30 shadow-inner" : "border-transparent",
+                    isToday ? "border-primary-foreground/30 shadow-inner bg-primary/10" : "border-transparent",
                     !moodInfo && "hover:bg-stone-50"
                   )}
                   style={moodInfo ? { backgroundColor: moodInfo.color } : {}}
@@ -235,7 +251,7 @@ function Dashboard() {
           <CalendarIcon className="w-6 h-6" />
         </Link>
         <Link href="/stats" className="text-muted-foreground hover:text-primary-foreground transition-colors">
-          <TrendingUp className="w-6 h-6" />
+          <BarChart3 className="w-6 h-6" />
         </Link>
         <Link href="/rewards" className="text-muted-foreground hover:text-primary-foreground transition-colors">
           <Flower className="w-6 h-6" />

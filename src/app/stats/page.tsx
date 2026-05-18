@@ -82,11 +82,20 @@ function StatisticsContent() {
     const now = new Date();
     const currentYear = now.getFullYear();
     
+    // Add current and past year
     for (let i = 0; i < 2; i++) {
       const year = currentYear - i;
       frames.push({ id: year.toString(), label: `Full Year ${year}`, type: 'year' });
     }
 
+    // Explicitly add 2026, 2027, 2028 as requested
+    [2026, 2027, 2028].forEach(year => {
+      if (!frames.find(f => f.id === year.toString())) {
+        frames.push({ id: year.toString(), label: `Full Year ${year}`, type: 'year' });
+      }
+    });
+
+    // Add months for the current year
     const currentYearStart = startOfYear(now);
     for (let i = 0; i < 12; i++) {
       const date = addMonths(currentYearStart, i);

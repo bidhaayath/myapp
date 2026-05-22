@@ -1,8 +1,10 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* Standard Firebase Hosting (Static Export) */
   output: 'export',
+  trailingSlash: true,
   typescript: {
     ignoreBuildErrors: true,
   },
